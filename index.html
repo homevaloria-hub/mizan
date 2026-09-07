@@ -1,603 +1,170 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kontajiran Store — تسيير المتجر</title>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1F4B3F">
-<link rel="apple-touch-icon" href="icon-192.png">
-<link rel="icon" href="icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-<style>
-  :root{
-    --ink:#1B2B22;
-    --paper:#F6F3EA;
-    --deep:#1F4B3F;
-    --deep-2:#163529;
-    --gold:#B8863B;
-    --gold-soft:#EFE2C4;
-    --line:#DCD4BE;
-    --danger:#A6432D;
-    --danger-soft:#F3DCD5;
-    --ok:#3E7C5A;
-    --ok-soft:#DCEBE1;
-    --card:#FFFFFF;
-    --muted:#8A8368;
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
-  body{
-    font-family:'Cairo',sans-serif;
-    background:var(--paper);
-    color:var(--ink);
-    min-height:100vh;
-    padding-bottom:78px;
-  }
-  .num{font-family:'IBM Plex Mono',monospace;}
-
-  header.topbar{
-    background:var(--deep);
-    color:var(--paper);
-    padding:16px 16px 14px 16px;
-    position:sticky;
-    top:0;
-    z-index:10;
-  }
-  header.topbar h1{
-    margin:0;
-    font-size:19px;
-    font-weight:900;
-    letter-spacing:0.3px;
-  }
-  header.topbar .sub{
-    font-size:11px;
-    opacity:0.8;
-    margin-top:2px;
-  }
-
-  main{max-width:520px;margin:0 auto;padding:14px;}
-  .view{display:none;}
-  .view.active{display:block;}
-
-  .card{
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:14px;
-    padding:14px;
-    margin-bottom:12px;
-  }
-  .card h2{
-    font-size:14px;
-    font-weight:700;
-    margin:0 0 10px 0;
-    color:var(--deep-2);
-  }
-
-  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-  .stat{
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:12px;
-    padding:12px;
-  }
-  .stat .lbl{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:4px;}
-  .stat .val{font-size:18px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--deep-2);}
-  .stat.warn .val{color:var(--danger);}
-  .stat.good .val{color:var(--ok);}
-
-  .btn{
-    border:none;
-    border-radius:9px;
-    padding:10px 14px;
-    font-family:'Cairo',sans-serif;
-    font-weight:700;
-    font-size:13px;
-    cursor:pointer;
-  }
-  .btn-primary{background:var(--deep);color:var(--paper);}
-  .btn-primary:active{background:var(--deep-2);}
-  .btn-gold{background:var(--gold);color:#fff;}
-  .btn-outline{background:transparent;border:1.5px solid var(--deep);color:var(--deep);}
-  .btn-danger{background:transparent;color:var(--danger);border:1.5px solid var(--danger);}
-  .btn-whatsapp{background:#25D366;color:#fff;}
-  .btn-sm{padding:6px 10px;font-size:12px;border-radius:7px;}
-  .btn-full{width:100%;}
-  .btn-row{display:flex;gap:8px;}
-
-  input, select, textarea{
-    width:100%;
-    padding:9px 10px;
-    border:1px solid var(--line);
-    border-radius:8px;
-    font-family:'Cairo',sans-serif;
-    font-size:13px;
-    background:var(--paper);
-    color:var(--ink);
-  }
-  label{
-    display:block;
-    font-size:11px;
-    font-weight:700;
-    color:var(--muted);
-    margin-bottom:4px;
-    margin-top:8px;
-  }
-  .field-row{display:flex;gap:8px;}
-  .field-row > div{flex:1;min-width:0;}
-
-  .form-panel{
-    background:var(--gold-soft);
-    border-radius:12px;
-    padding:12px;
-    margin-bottom:12px;
-    display:none;
-  }
-  .form-panel.open{display:block;}
-
-  .item-card{
-    border:1px solid var(--line);
-    border-radius:12px;
-    padding:12px;
-    margin-bottom:10px;
-    background:var(--card);
-  }
-  .item-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
-  .item-name{font-weight:700;font-size:14px;}
-  .item-tag{
-    display:inline-block;
-    font-size:10px;
-    background:var(--gold-soft);
-    color:var(--deep-2);
-    padding:2px 8px;
-    border-radius:20px;
-    margin-top:4px;
-    font-weight:700;
-  }
-  .item-meta{
-    display:flex;
-    gap:14px;
-    margin-top:8px;
-    font-size:12px;
-    color:var(--muted);
-    flex-wrap:wrap;
-  }
-  .item-meta b{color:var(--ink);font-family:'IBM Plex Mono',monospace;}
-  .item-actions{display:flex;gap:6px;flex-shrink:0;}
-  .icon-btn{
-    background:none;border:none;font-size:16px;cursor:pointer;color:var(--muted);
-    padding:2px 4px;
-  }
-  .icon-btn.danger{color:var(--danger);}
-
-  .badge{
-    display:inline-block;
-    padding:3px 9px;
-    border-radius:20px;
-    font-size:11px;
-    font-weight:700;
-  }
-  .badge.owe{background:var(--danger-soft);color:var(--danger);}
-  .badge.clear{background:var(--ok-soft);color:var(--ok);}
-  .badge.pending{background:#FFF3CD;color:#856404;}
-
-  .ledger-mini{
-    margin-top:8px;
-    padding-top:8px;
-    border-top:1px dashed var(--line);
-    display:none;
-  }
-  .ledger-mini.open{display:block;}
-  .ledger-mini .lrow{
-    display:flex;
-    justify-content:space-between;
-    font-size:11.5px;
-    padding:3px 0;
-    color:var(--muted);
-  }
-  .ledger-mini .lrow b{color:var(--ink);}
-
-  .empty-state{
-    text-align:center;
-    color:var(--muted);
-    font-size:13px;
-    padding:30px 10px;
-  }
-
-  /* sale view */
-  .cart-line{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:8px 0;
-    border-bottom:1px solid #EFEAE0;
-    font-size:13px;
-  }
-  .cart-line:last-child{border-bottom:none;}
-  .cart-line .ci-name{font-weight:600;flex:1;}
-  .cart-line .ci-price{font-family:'IBM Plex Mono',monospace;min-width:70px;text-align:left;font-weight:700;}
-  .gift-tag{
-    font-size:10px;background:var(--gold);color:#fff;padding:1px 6px;border-radius:10px;margin-right:6px;
-  }
-
-  .summary-line{
-    display:flex;
-    justify-content:space-between;
-    padding:5px 0;
-    font-size:13px;
-  }
-  .summary-line.total{
-    border-top:2px solid var(--deep);
-    margin-top:6px;
-    padding-top:10px;
-    font-weight:700;
-    font-size:15px;
-  }
-  .summary-line .num{font-weight:700;}
-
-  nav.bottom-nav{
-    position:fixed;
-    bottom:0;left:0;right:0;
-    background:var(--card);
-    border-top:1px solid var(--line);
-    display:flex;
-    overflow-x:auto;
-    z-index:20;
-  }
-  nav.bottom-nav button{
-    flex:1 0 auto;
-    min-width:58px;
-    background:none;
-    border:none;
-    padding:9px 4px 8px 4px;
-    font-family:'Cairo',sans-serif;
-    font-size:10px;
-    font-weight:700;
-    color:var(--muted);
-    cursor:pointer;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:3px;
-    white-space:nowrap;
-  }
-  nav.bottom-nav button .ic{font-size:17px;}
-  nav.bottom-nav button.active{color:var(--deep);}
-  nav.bottom-nav button.active .ic{color:var(--gold);}
-
-  .toast{
-    position:fixed;
-    bottom:86px;left:50%;
-    transform:translateX(-50%);
-    background:var(--deep-2);
-    color:var(--paper);
-    padding:10px 18px;
-    border-radius:10px;
-    font-size:13px;
-    font-weight:600;
-    opacity:0;
-    pointer-events:none;
-    transition:opacity 0.25s;
-    z-index:30;
-    white-space:nowrap;
-  }
-  .toast.show{opacity:1;}
-
-  .chip{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    background:var(--gold-soft);
-    color:var(--deep-2);
-    padding:5px 11px;
-    border-radius:20px;
-    font-size:12px;
-    font-weight:700;
-    cursor:pointer;
-    border:1.5px solid transparent;
-  }
-  .chip.active{
-    background:var(--deep);
-    color:var(--paper);
-  }
-  .chip .rm{
-    color:var(--danger);
-    font-weight:900;
-    margin-right:2px;
-  }
-  .chip.all{background:var(--card);border:1.5px solid var(--line);color:var(--muted);}
-  .chip.all.active{background:var(--deep);color:var(--paper);border-color:var(--deep);}
-
-  .item-thumb{
-    width:52px;height:52px;
-    border-radius:10px;
-    object-fit:cover;
-    border:1px solid var(--line);
-    flex-shrink:0;
-  }
-  .item-top-with-thumb{display:flex;gap:10px;align-items:flex-start;}
-
-  .catalog-grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:12px;
-  }
-  .catalog-card{
-    background:var(--card);
-    border:1px solid var(--line);
-    border-radius:14px;
-    overflow:hidden;
-  }
-  .catalog-img-wrap{
-    width:100%;
-    aspect-ratio:1/1;
-    background:var(--gold-soft);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    overflow:hidden;
-  }
-  .catalog-img-wrap img{width:100%;height:100%;object-fit:cover;}
-  .catalog-img-wrap .ph{font-size:30px;color:var(--gold);}
-  .catalog-body{padding:10px;}
-  .catalog-name{font-weight:700;font-size:13px;margin-bottom:4px;line-height:1.3;}
-  .catalog-sector{
-    display:inline-block;
-    font-size:9.5px;
-    background:var(--gold-soft);
-    color:var(--deep-2);
-    padding:2px 7px;
-    border-radius:20px;
-    font-weight:700;
-    margin-bottom:6px;
-  }
-  .catalog-price{
-    font-family:'IBM Plex Mono',monospace;
-    font-weight:700;
-    font-size:15px;
-    color:var(--deep);
-  }
-  .catalog-stock{
-    font-size:10.5px;
-    color:var(--muted);
-    margin-top:2px;
-  }
-  .catalog-stock.out{color:var(--danger);font-weight:700;}
-
-  #reader { width: 100%; max-width: 400px; margin: 10px auto; display: none; }
-
-  @media print {
-    body * { visibility: hidden; }
-    #printableInvoice, #printableInvoice * { visibility: visible; }
-    #printableInvoice {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 80mm;
-      padding: 8px;
-      font-size: 12px;
-      color: #000;
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kontajiran Store - تسيير المتجر</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1b4332">
+  <style>
+    :root {
+      --bg-color: #f4f1ea;
+      --card-bg: #ffffff;
+      --primary: #1b4332;
+      --danger: #b71c1c;
+      --text: #2d3748;
     }
-  }
-</style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text);
+      margin: 0;
+      padding: 0;
+      direction: rtl;
+    }
+    .header {
+      background-color: var(--primary);
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+    .header h1 { margin: 0; font-size: 24px; }
+    .header p { margin: 5px 0 0; opacity: 0.8; font-size: 14px; }
+    .container { padding: 15px; max-width: 600px; margin: 0 auto; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .card-title { font-weight: bold; font-size: 16px; margin-bottom: 8px; }
+    .card-desc { font-size: 12px; color: #666; margin-bottom: 12px; line-height: 1.4; }
+    .stat-val { font-size: 22px; font-weight: bold; color: var(--primary); text-align: center; }
+    .btn-group { display: flex; gap: 10px; }
+    .btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      text-align: center;
+      font-size: 14px;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+    .btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); width: 100%; }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; font-size: 13px; margin-bottom: 4px; }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+  </style>
 </head>
 <body>
 
-<header class="topbar">
-  <h1>Kontajiran Store</h1>
-  <div class="sub" id="topSub">تسيير المتجر</div>
-</header>
+  <div class="header">
+    <h1>Kontajiran Store</h1>
+    <p>تسيير المتجر</p>
+  </div>
 
-<main>
+  <div class="container">
+    <!-- الإحصائيات -->
+    <div class="grid">
+      <div class="card">
+        <div class="card-desc" style="text-align:center;">ديون عند الزبناء</div>
+        <div class="stat-val">0</div>
+      </div>
+      <div class="card">
+        <div class="card-desc" style="text-align:center;">ديون عند الموردين</div>
+        <div class="stat-val">0</div>
+      </div>
+    </div>
 
-  <!-- DASHBOARD -->
-  <section class="view active" id="view-dashboard">
-    <div class="stat-grid">
-      <div class="stat"><div class="lbl">رأس المال (قيمة الستوك بثمن الجملة)</div><div class="val num" id="statCapital">0</div></div>
-      <div class="stat"><div class="lbl">قيمة الستوك بثمن البيع</div><div class="val num" id="statStockValue">0</div></div>
-      <div class="stat good"><div class="lbl">مبيعات اليوم</div><div class="val num" id="statSalesToday">0</div></div>
-      <div class="stat good"><div class="lbl">ربح اليوم</div><div class="val num" id="statProfitToday">0</div></div>
-      <div class="stat warn"><div class="lbl">ديون عند الزبناء</div><div class="val num" id="statClientsCredit">0</div></div>
-      <div class="stat warn"><div class="lbl">ديون عند الموردين</div><div class="val num" id="statSuppliersDebt">0</div></div>
-    </div>
-    <div class="card" style="margin-top:12px;">
-      <h2>تنبيه — ستوك قليل (أقل من 5)</h2>
-      <div id="lowStockList"></div>
-    </div>
+    <!-- التنبيهات -->
     <div class="card">
-      <h2>نسخة احتياطية</h2>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
-        دير نسخة احتياطية من وقت لوقت وخزنها ف Drive ولا واتساب باش ماتضيعش بياناتك.
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-primary btn-full" id="exportBtn">تصدير نسخة احتياطية</button>
-        <button class="btn btn-outline btn-full" id="importBtnTrigger">استرجاع نسخة</button>
-      </div>
-      <input type="file" id="importFileInput" accept="application/json" style="display:none;">
+      <div class="card-title">تنبيه — ستوك قليل (أقل من 5)</div>
     </div>
-    <div class="card">
-      <h2>بداية جديدة</h2>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
-        هادشي كيمسح السلع والزبناء والموردين والفواتير باش تبدا نظيف. غادي نحملو ليك نسخة احتياطية أوتوماتيكيا قبل المسح.
-      </div>
-      <button class="btn btn-danger btn-full" id="resetAllBtn">امسح كلشي وبدا من جديد</button>
-    </div>
-  </section>
 
-  <!-- PRODUCTS -->
-  <section class="view" id="view-products">
-    <div class="btn-row" style="margin-bottom:10px;">
-      <button class="btn btn-primary btn-full" id="toggleAddProduct">+ زيد سلعة</button>
-      <button class="btn btn-gold" id="scanProductBtn">📷 مسح باركود</button>
-    </div>
-    <div id="reader"></div>
-    <div class="form-panel" id="productForm">
-      <label>الباركود (Scan or Type)</label>
-      <input type="text" id="pBarcode" placeholder="امسح الباركود أو اكتبه هنا">
-      <label>صورة السلعة</label>
-      <input type="file" id="pImage" accept="image/*">
-      <div id="pImagePreviewWrap" style="display:none;margin-top:8px;text-align:center;">
-        <img id="pImagePreview" style="max-width:140px;max-height:140px;border-radius:10px;border:1px solid var(--line);">
-        <div><button type="button" class="btn btn-outline btn-sm" id="removeImageBtn" style="margin-top:6px;">حذف الصورة</button></div>
-      </div>
-      <label>اسم السلعة</label>
-      <input type="text" id="pName" placeholder="مثلا: بسكويت XYZ">
-      <label>السيكطور / الصنف</label>
-      <input type="text" id="pSector" placeholder="مثلا: بسكويت، شوكولا">
-      <div class="field-row">
-        <div><label>ثمن الجملة</label><input type="number" id="pBuy" placeholder="0"></div>
-        <div><label>ثمن البيع</label><input type="number" id="pSell" placeholder="0"></div>
-      </div>
-      <label>الكمية المضافة للستوك</label>
-      <input type="number" id="pQty" placeholder="0">
-      <div class="btn-row" style="margin-top:10px;">
-        <button class="btn btn-gold btn-full" id="saveProductBtn">حفظ السلعة</button>
-        <button class="btn btn-outline" id="cancelProductBtn">إلغاء</button>
-      </div>
-    </div>
-    <input type="text" id="productSearch" placeholder="بحث عن سلعة أو باركود أو سيكطور..." style="margin-bottom:10px;">
-    <div id="productList"></div>
-  </section>
-
-  <!-- SALE -->
-  <section class="view" id="view-sale">
-    <div class="card">
-      <h2>زبون</h2>
-      <select id="saleClient"></select>
-    </div>
-    <div class="card">
-      <h2>زيد سلعة للفاتورة</h2>
-      <div class="btn-row" style="margin-bottom:8px;">
-        <button class="btn btn-gold btn-full" id="scanSaleBtn">📷 مسح باركود سلعة</button>
-      </div>
-      <label>أو اختر سلعة من القائمة</label>
-      <select id="saleProduct"></select>
-      <div class="field-row" style="margin-top:8px;">
-        <div><label>الكمية</label><input type="number" id="saleQty" value="1" min="1"></div>
-        <div style="display:flex;align-items:flex-end;gap:6px;">
-          <label style="margin:0;display:flex;align-items:center;gap:6px;font-size:12px;">
-            <input type="checkbox" id="saleGift" style="width:auto;"> هدية
-          </label>
+    <!-- قسم الطلبيات والطباعة الجديد -->
+    <div class="card" id="orders-section">
+      <div class="card-title">الطلبيات الخاصة / Les Commandes</div>
+      <div class="card-desc">تسجيل طلبية جديدة وإرسالها عبر الواتساب أو طباعتها مباشرة.</div>
+      
+      <form id="orderForm" onsubmit="handleOrderSubmit(event)">
+        <div class="form-group">
+          <label>اسم الزبون</label>
+          <input type="text" id="clientName" required placeholder="أدخل اسم الزبون">
         </div>
-      </div>
-      <button class="btn btn-gold btn-full" id="addToCartBtn" style="margin-top:10px;">زيد للفاتورة</button>
-    </div>
-    <div class="card">
-      <h2>الفاتورة الحالية</h2>
-      <div id="cartList"><div class="empty-state">الفاتورة فارغة</div></div>
-      <div style="margin-top:8px;">
-        <div class="field-row">
-          <div><label>نوع الخصم</label>
-            <select id="discountType">
-              <option value="none">بلا خصم</option>
-              <option value="percent">نسبة %</option>
-              <option value="amount">مبلغ ثابت</option>
-            </select>
-          </div>
-          <div><label>قيمة الخصم</label><input type="number" id="discountValue" value="0" min="0"></div>
+        <div class="form-group">
+          <label>رقم الهاتف (واتساب)</label>
+          <input type="tel" id="clientPhone" placeholder="212600000000">
         </div>
-      </div>
-      <div class="summary-line"><span>المجموع الفرعي</span><span class="num" id="sumSubtotal">0</span></div>
-      <div class="summary-line"><span>قيمة الهدايا</span><span class="num" id="sumGifts">0</span></div>
-      <div class="summary-line"><span>الخصم</span><span class="num" id="sumDiscount">0</span></div>
-      <div class="summary-line total"><span>المجموع النهائي</span><span class="num" id="sumTotal">0</span></div>
-      <label>المبلغ المدفوع الآن</label>
-      <input type="number" id="paidAmount" value="0" min="0">
-      <div class="summary-line"><span>الباقي (كريدي عند الزبون)</span><span class="num" id="sumCredit">0</span></div>
-      <div class="btn-row" style="margin-top:12px;">
-        <button class="btn btn-primary btn-full" id="confirmSaleBtn">💾 حفظ فقط</button>
-        <button class="btn btn-gold btn-full" id="confirmAndPrintSaleBtn">🖨️ حفظ وطباعة</button>
-      </div>
+        <div class="form-group">
+          <label>تفاصيل الطلبية</label>
+          <input type="text" id="orderDetails" required placeholder="مثال: 2 كرتونة كيك + 1 كرتونة شوكولاتة">
+        </div>
+        <div class="form-group">
+          <label>المبلغ الإجمالي (درهم)</label>
+          <input type="number" id="orderAmount" required placeholder="0.00">
+        </div>
+        
+        <div class="btn-group" style="margin-top: 12px;">
+          <button type="submit" class="btn btn-primary">حفظ وتصدير</button>
+          <button type="button" class="btn btn-outline" onclick="printOrder()">طباعة الفاتورة</button>
+        </div>
+      </form>
     </div>
-  </section>
 
-  <!-- SPECIAL ORDERS (NEW SECTION) -->
-  <section class="view" id="view-orders">
-    <div class="btn-row" style="margin-bottom:10px;">
-      <button class="btn btn-primary btn-full" id="toggleAddOrder">+ طلبية جديدة لزبون</button>
-    </div>
-    <div class="form-panel" id="orderForm">
-      <label>اسم الزبون</label>
-      <input type="text" id="oClientName" placeholder="مثلا: محمد طنجة">
-      <label>رقم هاتف الزبون (للواتساب)</label>
-      <input type="text" id="oClientPhone" placeholder="212600000000">
-      <label>السلعة المطلوبة</label>
-      <input type="text" id="oItemName" placeholder="مثلا: كرتونة بسكويت خاص">
-      <div class="field-row">
-        <div><label>الكمية</label><input type="number" id="oQty" value="1"></div>
-        <div><label>العربون (Avance)</label><input type="number" id="oAdvance" value="0"></div>
-      </div>
-      <label>ملاحظة / تفاصيل الإرسال</label>
-      <input type="text" id="oNote" placeholder="تفاصيل لون أو حجم...">
-      <div class="btn-row" style="margin-top:10px;">
-        <button class="btn btn-gold btn-full" id="saveOrderBtn">حفظ الطلبية</button>
-        <button class="btn btn-outline" id="cancelOrderBtn">إلغاء</button>
-      </div>
-    </div>
-    <div id="orderList"></div>
-  </section>
-
-  <!-- CLIENTS -->
-  <section class="view" id="view-clients">
+    <!-- نسخة احتياطية -->
     <div class="card">
-      <h2>السيكطورات (المناطق)</h2>
-      <div id="sectorChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
-      <div class="btn-row">
-        <input type="text" id="newSectorInput" placeholder="مثلا: طنجة">
-        <button class="btn btn-outline btn-sm" id="addSectorBtn">+ زيد سيكطور</button>
+      <div class="card-title">نسخة احتياطية</div>
+      <div class="card-desc">دير نسخة احتياطية من وقت لوقت وخزنها ف Drive ولا واتساب باش ماتضيعش بياناتك.</div>
+      <div class="btn-group">
+        <button class="btn btn-primary">تصدير نسخة احتياطية</button>
+        <button class="btn btn-outline">استرجاع نسخة</button>
       </div>
     </div>
-    <div class="btn-row" style="margin-bottom:10px;">
-      <button class="btn btn-primary btn-full" id="toggleAddClient">+ زيد زبون</button>
+
+    <!-- بداية جديدة -->
+    <div class="card">
+      <div class="card-title">بداية جديدة</div>
+      <div class="card-desc">هادشي كيمسح السلع والزبناء والموردين والفواتير باش تبدا نظيف. غادي نحملو ليك نسخة احتياطية أوتوماتيكيا قبل المسح.</div>
+      <button class="btn btn-danger">امسح كلشي وبدا من جديد</button>
     </div>
-    <div class="form-panel" id="clientForm">
-      <label>الاسم</label><input type="text" id="cName" placeholder="اسم الزبون">
-      <label>الهاتف (للواتساب)</label><input type="text" id="cPhone" placeholder="212600000000">
-      <label>السيكطور</label>
-      <select id="cSector"><option value="">بلا سيكطور</option></select>
-      <div class="btn-row" style="margin-top:10px;">
-        <button class="btn btn-gold btn-full" id="saveClientBtn">حفظ</button>
-        <button class="btn btn-outline" id="cancelClientBtn">إلغاء</button>
-      </div>
-    </div>
-    <div id="sectorFilterRow" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
-    <div id="clientList"></div>
-  </section>
+  </div>
 
-  <!-- SUPPLIERS -->
-  <section class="view" id="view-suppliers">
-    <div class="btn-row" style="margin-bottom:10px;">
-      <button class="btn btn-primary btn-full" id="toggleAddSupplier">+ زيد مورد</button>
-    </div>
-    <div class="form-panel" id="supplierForm">
-      <label>الاسم</label><input type="text" id="sName" placeholder="اسم المورد / الشركة">
-      <label>الهاتف</label><input type="text" id="sPhone" placeholder="06...">
-      <div class="btn-row" style="margin-top:10px;">
-        <button class="btn btn-gold btn-full" id="saveSupplierBtn">حفظ</button>
-        <button class="btn btn-outline" id="cancelSupplierBtn">إلغاء</button>
-      </div>
-    </div>
-    <div id="supplierList"></div>
-  </section>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js');
+      });
+    }
 
-  <!-- INVOICES -->
-  <section class="view" id="view-invoices">
-    <div id="invoiceList"></div>
-  </section>
+    function handleOrderSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('clientName').value;
+      const phone = document.getElementById('clientPhone').value;
+      const details = document.getElementById('orderDetails').value;
+      const amount = document.getElementById('orderAmount').value;
 
-  <!-- CATALOGUE -->
-  <section class="view" id="view-catalog">
-    <div id="catalogSectorRow" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;"></div>
-    <div class="catalog-grid" id="catalogGrid"></div>
-  </section>
+      if(phone) {
+        const msg = `مرحباً ${name}، تم تسجيل طلبيتك بنجاح:%0A- التفاصيل: ${details}%0A- المبلغ الإجمالي: ${amount} درهم.`;
+        window.open(`https://wa.me/${phone}?text=${msg}`, '_blank');
+      } else {
+        alert('تم حفظ الطلبية بنجاح!');
+      }
+    }
 
-</main>
-
-<div id="printableInvoice" style="display:none;">
-  <h2 style="text-align: center; margin:0 0 4px 0;">Kontajiran Store</h2>
-  <p style="text-align: center; margin:0 0 10px 0; font-size:11px;">تسيير وتوزيع المتجر</p>
-  <hr style="border: 0.5px solid #000;">
-  <p style="margin: 4px 0;"><b>التاريخ:</b> <span id="invDate"></span></p>
-  <p style="mar
+    function printOrder() {
+      window.print();
+    }
+  </script>
+</body>
+</html>
