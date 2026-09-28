@@ -678,6 +678,7 @@
 
   <!-- CATALOGUE -->
   <section class="view" id="view-catalog">
+    <div id="catalogModeBar" style="margin-bottom:10px;"></div>
     <div id="catalogSectorRow" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;"></div>
     <div id="catalogBrandRow" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;"></div>
     <div class="catalog-grid" id="catalogGrid"></div>
@@ -1998,8 +1999,21 @@ document.getElementById("invoiceSearch").addEventListener("input", renderInvoice
 // ---------- CATALOGUE ----------
 let activeCatalogSector = "";
 let activeCatalogBrand = "";
+let catalogOwnerMode = false; // false = customer view (only in-stock), true = owner view (all)
+function catalogVisible(p){
+  return catalogOwnerMode || p.qty > 0 || p.showWhenOut === true;
+}
 function renderCatalog(){
-  const productSectors = [...new Set(state.products.map(p => p.sector).filter(Boolean))];
+  const modeBar = document.getElementById("catalogModeBar");
+  modeBar.innerHTML = catalogOwnerMode
+    ? `<button class="btn btn-gold btn-full" id="catalogModeBtn">🔓 وضع صاحب المحل: كلشي ظاهر (نقر باش تدخل لوضع الزبون)</button>`
+    : `<button class="btn btn-outline btn-full" id="catalogModeBtn">👁️ وضع الزبون: السلع المتوفرة غير (نقر باش تشوف كلشي)</button>`;
+  document.getElementById("catalogModeBtn").addEventListener("click", () => {
+    catalogOwnerMode = !catalogOwnerMode;
+    renderCatalog();
+  });
+  const visibleProducts = state.products.filter(catalogVisible);
+  const productSectors = [...new Set(visibleProducts.map(p => p.sector).filter(Boolean))];
   const rowEl = document.getElementById("catalogSectorRow");
   const chips = ['<span class="chip all ' + (activeCatalogSector==="" ? "active" : "") + '" data-cf="">كولشي</span>']
     .concat(productSectors.map(s => `<span class="chip ${activeCatalogSector===s ? "active" : ""}" data-cf="${escapeHtml(s)}">${escapeHtml(s)}</span>`));
@@ -2012,7 +2026,7 @@ function renderCatalog(){
   });
 
   const brandRowEl = document.getElementById("catalogBrandRow");
-  const sectorScoped = activeCatalogSector ? state.products.filter(p => p.sector === activeCatalogSector) : state.products;
+  const sectorScoped = activeCatalogSector ? visibleProducts.filter(p => p.sector === activeCatalogSector) : visibleProducts;
   const productBrands = [...new Set(sectorScoped.map(p => p.brand).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
   if(productBrands.length){
     const brandChips = ['<span class="chip all ' + (activeCatalogBrand==="" ? "active" : "") + '" data-bf="">كل الماركات</span>']
@@ -2030,7 +2044,7 @@ function renderCatalog(){
   }
 
   const grid = document.getElementById("catalogGrid");
-  let filtered = activeCatalogSector ? state.products.filter(p => p.sector === activeCatalogSector) : state.products.slice();
+  let filtered = activeCatalogSector ? visibleProducts.filter(p => p.sector === activeCatalogSector) : visibleProducts.slice();
   if(activeCatalogBrand) filtered = filtered.filter(p => p.brand === activeCatalogBrand);
   // group same-brand products together, professionally: sort by brand then name
   // (products with no brand keep their natural order, pushed after branded ones)
@@ -2066,6 +2080,7 @@ function renderCatalog(){
         <div class="catalog-calc-total" id="cat-total-${p.id}">= ${fmt(p.promoPrice || p.sellPrice)}</div>
         <button class="btn btn-gold catalog-add-btn cat-add-sale" data-id="${p.id}" ${p.qty<=0 ? "disabled style='opacity:0.5;'" : ""}>زيد للبيع</button>
         ${p.qty<=0 ? `<button class="btn btn-outline catalog-add-btn cat-order" data-id="${p.id}" style="margin-top:6px;">📋 دير طلبية</button>` : ""}
+        ${(catalogOwnerMode && p.qty<=0) ? `<button class="btn btn-outline catalog-add-btn cat-toggle-show" data-id="${p.id}" style="margin-top:6px;">${p.showWhenOut ? '🙈 خبيها على الزبون' : '👁️ أظهرها للزبون'}</button>` : ""}
       </div>
     </div>
   `).join("");
@@ -2116,6 +2131,16 @@ function renderCatalog(){
         gift: false
       });
       showToast(product.name + " تزادت للفاتورة — دوز لتبويب 'بيع' باش تكمل");
+    });
+  });
+  grid.querySelectorAll(".cat-toggle-show").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const product = state.products.find(x => x.id === parseInt(btn.dataset.id));
+      if(!product) return;
+      product.showWhenOut = !product.showWhenOut;
+      await saveState();
+      renderCatalog();
+      showToast(product.showWhenOut ? "غتبان للزبون حتى وهي نافدة" : "غتبقى مخبية على الزبون حتى تتوفر");
     });
   });
   grid.querySelectorAll(".cat-order").forEach(btn => {
