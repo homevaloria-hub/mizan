@@ -1,4 +1,4 @@
-const CACHE_NAME = "mizan-cache-v9";
+const CACHE_NAME = "mizan-cache-v11";
 const ASSETS = [
   "./index.html",
   "./manifest.json",

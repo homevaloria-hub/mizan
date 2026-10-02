@@ -492,6 +492,7 @@
 
   <!-- DASHBOARD -->
   <section class="view active" id="view-dashboard">
+    <div id="storageHealthCard" style="display:none;margin-bottom:12px;"></div>
     <div id="backupReminderCard" style="display:none;margin-bottom:12px;"></div>
     <div class="card" id="todayRouteWrap">
       <h2>🚚 جولة اليوم</h2>
@@ -838,16 +839,67 @@ modalOverlay.addEventListener("click", (e) => {
   if(e.target === modalOverlay) closeModal();
 });
 
+// ---------- STORAGE ENGINE ----------
+// We used to keep everything in localStorage, which most phone browsers cap
+// around ~5MB per site. Product photos (base64 text) fill that up fast, and
+// once it's full, saves silently fail. IndexedDB has no such small cap (it
+// shares the device's free disk space, normally hundreds of MB or more), so
+// we store the real data there now. localStorage is kept only as a tiny
+// "is there old data to migrate" check, done once automatically.
+const IDB_NAME = "kontajiran-db";
+const IDB_STORE = "kv";
+let idbPromise = null;
+function openIDB(){
+  if(idbPromise) return idbPromise;
+  idbPromise = new Promise((resolve, reject) => {
+    if(!window.indexedDB){ reject(new Error("لا يوجد IndexedDB")); return; }
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore(IDB_STORE); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return idbPromise;
+}
+function idbGet(key){
+  return openIDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readonly");
+    const req = tx.objectStore(IDB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  }));
+}
+function idbSet(key, value){
+  return openIDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).put(value, key);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  }));
+}
+
 async function saveState(){
   try{
-    localStorage.setItem(STORE_KEY, JSON.stringify(state));
-  }catch(e){ console.error("save failed", e); showToast("ماتسجلاتش البيانات، الذاكرة ديال المتصفح كاملة"); }
+    await idbSet(STORE_KEY, state);
+    return true;
+  }catch(e){
+    console.error("save failed", e);
+    showToast("⚠️ ماتسجلاتش هاد العملية! الذاكرة كاملة");
+    return false;
+  }
 }
 async function loadState(){
   try{
-    const raw = localStorage.getItem(STORE_KEY);
-    if(raw){
-      const parsed = JSON.parse(raw);
+    let data = await idbGet(STORE_KEY);
+    if(!data){
+      // first run after the update: migrate any old localStorage data once
+      const raw = localStorage.getItem(STORE_KEY);
+      if(raw){
+        data = JSON.parse(raw);
+        await idbSet(STORE_KEY, data);
+      }
+    }
+    if(data){
+      const parsed = data;
       const mergedNextId = Object.assign({}, state.nextId, parsed.nextId || {});
       state = Object.assign(state, parsed);
       state.nextId = mergedNextId;
@@ -855,7 +907,7 @@ async function loadState(){
       if(!state.weeklyPlan || typeof state.weeklyPlan !== "object") state.weeklyPlan = {0:"",1:"",2:"",3:"",4:"",5:"",6:""};
       for(let i=0;i<7;i++){ if(state.weeklyPlan[i] === undefined) state.weeklyPlan[i] = ""; }
     }
-  }catch(e){ /* no existing data yet */ }
+  }catch(e){ console.error("load failed", e); /* no existing data yet, or IndexedDB unavailable */ }
 }
 
 // ---------- NAVIGATION ----------
@@ -896,6 +948,7 @@ function renderDashboard(){
   document.getElementById("statSuppliersDebt").textContent = fmt(suppliersDebt);
   renderTodayRoute();
   renderBackupReminder();
+  renderStorageHealth();
 
   const low = state.products.filter(p => p.qty < 5);
   const lowEl = document.getElementById("lowStockList");
@@ -948,7 +1001,7 @@ document.getElementById("pImage").addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if(!file) return;
   try{
-    const dataUrl = await resizeImageFile(file, 500, 0.72);
+    const dataUrl = await resizeImageFile(file, 420, 0.6);
     pendingImage = dataUrl;
     imageTouched = true;
     document.getElementById("pImagePreview").src = dataUrl;
@@ -1011,9 +1064,11 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
     if(dup){ showToast("هاد الباركود مستعمل ديجا ف: " + dup.name); return; }
   }
 
+  let snapshot = null, isNew = false;
   if(editingProductId){
     const p = state.products.find(x => x.id === editingProductId);
     if(p){
+      snapshot = JSON.parse(JSON.stringify(p));
       const oldQty = p.qty;
       p.name=name; p.barcode=barcode; p.sector=sector; p.brand=brand; p.buyPrice=buyPrice; p.sellPrice=sellPrice; p.promoPrice=promoPrice; p.qty=qty;
       if(imageTouched) p.image = pendingImage || "";
@@ -1021,11 +1076,21 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
     }
     editingProductId = null;
   } else {
+    isNew = true;
     const newP = { id: state.nextId.product++, name, barcode, sector, brand, buyPrice, sellPrice, promoPrice, qty, image: pendingImage || "", lots: [] };
     if(expiryVal && qty > 0) addLot(newP, qty, expiryVal);
     state.products.push(newP);
   }
-  await saveState();
+  const ok = await saveState();
+  if(!ok){
+    if(isNew){ state.products.pop(); }
+    else if(snapshot){
+      const idx = state.products.findIndex(x => x.id === snapshot.id);
+      if(idx !== -1) state.products[idx] = snapshot;
+    }
+    showStorageFullModal();
+    return;
+  }
   clearProductForm();
   document.getElementById("productForm").classList.remove("open");
   renderProducts();
@@ -1238,9 +1303,17 @@ function handleBarcodeEntry(){
     const addQty = parseFloat(qtyStr);
     if(!addQty || addQty <= 0){ input.value=""; input.focus(); return; }
     const expiryStr = prompt("واش هاد الكمية عندها تاريخ صلاحية؟ (اكتبو بصيغة YYYY-MM-DD، ولا خليه خاوي إلا ماكاينش)", "");
+    const oldQty = p.qty;
+    const oldLots = JSON.parse(JSON.stringify(p.lots||[]));
     p.qty = fmtNum(p.qty + addQty);
     if(expiryStr && expiryStr.trim()) addLot(p, addQty, expiryStr.trim());
-    saveState().then(() => {
+    saveState().then((ok) => {
+      if(!ok){
+        p.qty = oldQty;
+        p.lots = oldLots;
+        showStorageFullModal();
+        return;
+      }
       renderProducts();
       renderDashboard();
       showToast("تزاد " + addQty + " ل" + p.name + " — دابا الستوك: " + p.qty);
@@ -1699,7 +1772,21 @@ document.getElementById("confirmSaleBtn").addEventListener("click", async () => 
     c.ledger.push({date: invoice.date, desc: "فاتورة #" + invoice.id, amount: creditAdded, type: "debt"});
   }
 
-  await saveState();
+  const ok = await saveState();
+  if(!ok){
+    // roll back everything in memory so the UI doesn't lie about what was saved
+    state.invoices.pop();
+    cart.forEach(item => {
+      const p = state.products.find(x => x.id === item.productId);
+      if(p) p.qty = fmtNum(p.qty + item.qty);
+    });
+    if(clientId && creditAdded > 0){
+      const c = state.clients.find(x => x.id === clientId);
+      if(c){ c.credit = fmtNum(c.credit - creditAdded); c.ledger.pop(); }
+    }
+    showStorageFullModal();
+    return;
+  }
   cart = [];
   document.getElementById("paidAmount").value = 0;
   document.getElementById("discountValue").value = 0;
@@ -2497,6 +2584,75 @@ function renderBackupReminder(){
     el.style.display = "none";
     el.innerHTML = "";
   }
+}
+
+// ---------- STORAGE HEALTH ----------
+// We now save into IndexedDB (see saveState/loadState above), which shares the
+// device's free disk space instead of the old ~5MB localStorage cap — so this
+// should basically never trigger anymore for a normal shop's worth of products
+// and photos. It's kept as a safety net only: saveState() still returns false
+// if a write genuinely fails (e.g. the device's disk is actually full), and
+// this banner + the cleanup button below are there just in case that happens.
+const STORAGE_SOFT_LIMIT_BYTES = 60 * 1024 * 1024; // sanity-check threshold, not a real IndexedDB cap
+
+function estimateStorageBytes(){
+  try{ return new Blob([JSON.stringify(state)]).size; }catch(e){ return (JSON.stringify(state)||"").length; }
+}
+function countProductImages(){
+  return state.products.filter(p => p.image).length;
+}
+function showStorageFullModal(){
+  const pct = Math.min(100, Math.round((estimateStorageBytes()/STORAGE_SOFT_LIMIT_BYTES)*100));
+  openModal(`
+    <h3>⚠️ الذاكرة ديال التطبيق كاملة!</h3>
+    <div style="font-size:12.5px;margin-bottom:12px;">
+      هادشي هو لي كيخليك تدخل سلعة ولا فاتورة وكيبان ليك تسجلات، ومنين تحل التطبيق من جديد تلقاها رجعات لحالها — حيت ماتسجلاتش فالذاكرة أصلا. عندك ${countProductImages()} سلعة بتصويرة. ماخاصكش تمسح التصاور غير إلا هاد الرسالة بانت ليك بالفعل.
+    </div>
+    <div class="btn-row" style="margin-bottom:8px;">
+      <button class="btn btn-gold btn-full" id="modalCleanImagesBtn">🧹 امسح تصاور السلع كلها دابا (كتفرغ بزاف ديال البلاصة)</button>
+    </div>
+    <div class="btn-row" style="margin-bottom:8px;">
+      <button class="btn btn-outline btn-full" id="modalExportFirstBtn">📥 صدر نسخة احتياطية أولا</button>
+    </div>
+    <button class="modal-close" id="modalStorageCloseBtn">إغلاق</button>
+  `);
+  document.getElementById("modalCleanImagesBtn").addEventListener("click", async () => {
+    if(!confirm("متأكد؟ غادي تتمسح تصاور السلع كاملين باش تفرغ بلاصة فالذاكرة (أسماء وأثمنة وستوك السلع ماغاديش يتمسحو).")){ return; }
+    state.products.forEach(p => { p.image = ""; });
+    const ok = await saveState();
+    if(ok) showToast("تمسحو التصاور، البلاصة فرغات");
+    else showToast("مازال الذاكرة كاملة، صدر نسخة احتياطية وتواصل معانا");
+    closeModal();
+    renderProducts();
+    renderCatalog();
+    renderDashboard();
+  });
+  document.getElementById("modalExportFirstBtn").addEventListener("click", () => {
+    exportBackup();
+    showToast("تصدرات النسخة الاحتياطية");
+  });
+  document.getElementById("modalStorageCloseBtn").addEventListener("click", closeModal);
+}
+function renderStorageHealth(){
+  const el = document.getElementById("storageHealthCard");
+  if(!el) return;
+  const bytes = estimateStorageBytes();
+  const pct = Math.min(100, Math.round((bytes/STORAGE_SOFT_LIMIT_BYTES)*100));
+  if(pct < 70){
+    el.style.display = "none";
+    el.innerHTML = "";
+    return;
+  }
+  el.style.display = "block";
+  const urgent = pct >= 90;
+  el.innerHTML = `
+    <div class="barcode-panel" style="background:${urgent ? '#fde2e2' : '#fff3cd'};">
+      <div style="font-size:12.5px;color:${urgent ? '#8a1f1f' : '#8a6d00'};font-weight:700;margin-bottom:8px;">
+        ${urgent ? '🛑 الذاكرة قربات تعمر بالكامل (' + pct + '%)! خاصك تفرغ بلاصة دابا قبل ماتضيع ليك معلومة.' : '⚠️ الذاكرة ديال التطبيق وصلات ' + pct + '% — حسن تفرغ شوية بلاصة قريبا.'}
+      </div>
+      <button class="btn btn-gold btn-full" id="storageCleanBtn">🧹 امسح تصاور السلع (فرغ بلاصة)</button>
+    </div>`;
+  document.getElementById("storageCleanBtn").addEventListener("click", () => { showStorageFullModal(); });
 }
 
 document.getElementById("importBtnTrigger").addEventListener("click", () => {
