@@ -552,6 +552,19 @@
     <div class="btn-row" style="margin-bottom:10px;">
       <button class="btn btn-primary btn-full" id="toggleAddProduct">+ زيد سلعة</button>
     </div>
+    <div class="btn-row" style="margin-bottom:10px;">
+      <button class="btn btn-gold btn-full" id="toggleStocktake">📋 جرد شامل — صحح الستوك ديال كل السلع دفعة وحدة</button>
+    </div>
+    <div class="form-panel" id="stocktakePanel">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
+        دخل العدد الحقيقي اللي كاين دابا فالمحل لكل سلعة (بالعين، جرد يدوي)، ومنبعد نقر "حفظ الجرد" باش يتبدل الستوك ديال الكل فمرة وحدة.
+      </div>
+      <div id="stocktakeList"></div>
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="btn btn-gold btn-full" id="saveStocktakeBtn">💾 حفظ الجرد</button>
+        <button class="btn btn-outline" id="cancelStocktakeBtn">إلغاء</button>
+      </div>
+    </div>
     <div class="form-panel" id="productForm">
       <label>صورة السلعة</label>
       <input type="file" id="pImage" accept="image/*">
@@ -1030,6 +1043,48 @@ document.getElementById("toggleAddProduct").addEventListener("click", () => {
   editingProductId = null;
   clearProductForm();
   document.getElementById("productForm").classList.toggle("open");
+});
+
+// ---------- FULL STOCKTAKE (correct every product's qty in one go) ----------
+function renderStocktakeList(){
+  const el = document.getElementById("stocktakeList");
+  if(state.products.length === 0){
+    el.innerHTML = '<div class="empty-state">ماكاينش سلع بعد</div>';
+    return;
+  }
+  el.innerHTML = state.products.map(p => `
+    <div class="field-row" style="align-items:center;margin-bottom:8px;">
+      <div style="flex:1;font-size:13px;">${escapeHtml(p.name)}${p.sector ? ' <span style="color:var(--muted);font-size:11px;">('+escapeHtml(p.sector)+')</span>' : ''}</div>
+      <input type="number" class="stocktake-input" data-id="${p.id}" value="${p.qty}" style="max-width:90px;">
+    </div>
+  `).join("");
+}
+document.getElementById("toggleStocktake").addEventListener("click", () => {
+  renderStocktakeList();
+  document.getElementById("stocktakePanel").classList.toggle("open");
+  window.scrollTo({top:0, behavior:"smooth"});
+});
+document.getElementById("cancelStocktakeBtn").addEventListener("click", () => {
+  document.getElementById("stocktakePanel").classList.remove("open");
+});
+document.getElementById("saveStocktakeBtn").addEventListener("click", async () => {
+  if(!confirm("متأكد؟ غادي يتبدل الستوك ديال جميع السلع بالأرقام اللي دخلتي دابا.")) return;
+  let changedCount = 0;
+  document.querySelectorAll(".stocktake-input").forEach(input => {
+    const p = state.products.find(x => x.id === parseInt(input.dataset.id));
+    const newQty = parseFloat(input.value);
+    if(p && !isNaN(newQty) && newQty !== p.qty){
+      p.qty = fmtNum(newQty);
+      changedCount++;
+    }
+  });
+  const ok = await saveState();
+  if(!ok){ showStorageFullModal(); return; }
+  document.getElementById("stocktakePanel").classList.remove("open");
+  renderProducts();
+  renderDashboard();
+  renderCatalog();
+  showToast(changedCount > 0 ? `تصحح الستوك ديال ${changedCount} سلعة` : "مابدلتيش شي حاجة");
 });
 document.getElementById("cancelProductBtn").addEventListener("click", () => {
   document.getElementById("productForm").classList.remove("open");
