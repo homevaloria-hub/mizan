@@ -522,6 +522,14 @@
       <input type="file" id="importFileInput" accept="application/json" style="display:none;">
     </div>
     <div class="card">
+      <h2>🔍 فحص الذاكرة</h2>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
+        إلا حسيتي أن البيانات رجعت لقديمة ولا ناقصة، دير فحص باش نشوفو واش كاين شي نسخة أخرى محفوظة فهاد الهاتف غير اللي بانة ليك دابا.
+      </div>
+      <button class="btn btn-outline btn-full" id="diagnoseBtn">افحص دابا</button>
+      <div id="diagnoseResult" style="margin-top:10px;"></div>
+    </div>
+    <div class="card">
       <h2>بداية جديدة</h2>
       <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">
         هادشي كيمسح السلع والزبناء والموردين والفواتير باش تبدا نظيف. غادي نحملو ليك نسخة احتياطية أوتوماتيكيا قبل المسح، باش تقدر ترجع ليها إلا احتجتي.
@@ -2759,8 +2767,11 @@ async function checkLegacyLocalStorageRecovery(){
     const currentCount = currentInvoices.length;
     const legacyLast = legacyCount ? legacyInvoices[legacyCount-1].date : null;
     const currentLast = currentCount ? currentInvoices[currentCount-1].date : null;
-    const looksNewer = legacyCount > currentCount || (legacyLast && (!currentLast || legacyLast > currentLast));
-    if(!looksNewer) return;
+    // Show this whenever the two differ AT ALL (not just when the old one
+    // "looks newer") — the person reviewing it can judge their own data
+    // better than a guess here can.
+    const differs = legacyCount !== currentCount || legacyLast !== currentLast;
+    if(!differs) return;
     showLegacyRecoveryModal(legacy, {
       legacyCount, currentCount,
       legacyLast: legacyLast ? legacyLast.slice(0,16).replace('T',' — ') : "ماكاين حتى فاتورة",
@@ -2768,6 +2779,64 @@ async function checkLegacyLocalStorageRecovery(){
     });
   }catch(e){ console.error("legacy recovery check failed", e); }
 }
+
+// Manual, on-demand version of the same check, with a visible result either
+// way (used by the "افحص الذاكرة" button so the person can see raw numbers
+// from BOTH storage locations themselves, instead of relying on a popup that
+// only appears when the code guesses something looks off).
+async function runDiagnosis(){
+  const el = document.getElementById("diagnoseResult");
+  el.innerHTML = '<div style="font-size:12px;color:var(--muted);">كنفحص...</div>';
+
+  let idbLine = "⚠️ ماقدرتش نوصل للذاكرة الحالية (IndexedDB) — هادشي خطير، قوليا بيه";
+  try{
+    const idbData = await idbGet(STORE_KEY);
+    if(idbData){
+      const invs = idbData.invoices || [];
+      const last = invs.length ? invs[invs.length-1].date.slice(0,16).replace('T',' — ') : "ماكاين";
+      const stockSum = fmtNum((idbData.products||[]).reduce((s,p)=>s+(Number(p.qty)||0),0));
+      idbLine = `✅ البيانات الحالية (اللي بانة ليك فالتطبيق): ${invs.length} فاتورة — آخر وحدة فـ ${last} — مجموع الستوك: ${stockSum}`;
+    } else {
+      idbLine = "ℹ️ البيانات الحالية خاوية تماما";
+    }
+  }catch(e){ idbLine = "⚠️ ماقدرتش نوصل للذاكرة الحالية: " + (e.message||e); }
+
+  let legacyLine = "ℹ️ ماكاين حتى نسخة قديمة محفوظة بوحدها فهاد المتصفح";
+  let legacy = null;
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw){
+      legacy = JSON.parse(raw);
+      const invs = legacy.invoices || [];
+      const last = invs.length ? invs[invs.length-1].date.slice(0,16).replace('T',' — ') : "ماكاين";
+      const stockSum = fmtNum((legacy.products||[]).reduce((s,p)=>s+(Number(p.qty)||0),0));
+      legacyLine = `🗄️ نسخة قديمة لقيناها: ${invs.length} فاتورة — آخر وحدة فـ ${last} — مجموع الستوك: ${stockSum}`;
+    }
+  }catch(e){ legacyLine = "⚠️ كاينة نسخة قديمة بس تهرسات، ماقدرتش نقراها"; }
+
+  el.innerHTML = `<div class="barcode-panel">
+    <div style="font-size:12.5px;margin-bottom:6px;">${idbLine}</div>
+    <div style="font-size:12.5px;">${legacyLine}</div>
+  </div>`;
+
+  if(legacy){
+    const btn = document.createElement("button");
+    btn.className = "btn btn-gold btn-full";
+    btn.style.marginTop = "8px";
+    btn.textContent = "♻️ شوف وقارن باش تسترجعها إلا بغيتي";
+    btn.addEventListener("click", () => {
+      const invs = legacy.invoices || [];
+      const curInvs = state.invoices || [];
+      showLegacyRecoveryModal(legacy, {
+        legacyCount: invs.length, currentCount: curInvs.length,
+        legacyLast: invs.length ? invs[invs.length-1].date.slice(0,16).replace('T',' — ') : "ماكاين حتى فاتورة",
+        currentLast: curInvs.length ? curInvs[curInvs.length-1].date.slice(0,16).replace('T',' — ') : "ماكاين حتى فاتورة"
+      });
+    });
+    el.appendChild(btn);
+  }
+}
+document.getElementById("diagnoseBtn").addEventListener("click", runDiagnosis);
 function showLegacyRecoveryModal(legacy, info){
   openModal(`
     <h3>⚠️ لقينا بيانات أخرى محفوظة فهاد الهاتف</h3>
