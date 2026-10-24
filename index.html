@@ -1550,6 +1550,7 @@ function renderClients(){
       <div class="btn-row" style="margin-top:10px;">
         <button class="btn btn-outline btn-sm toggle-ledger" data-id="${c.id}">السجل</button>
         <button class="btn btn-outline btn-sm view-client-invoices" data-id="${c.id}">📜 الفواتير</button>
+        <button class="btn btn-outline btn-sm add-manual-debt" data-id="${c.id}">➕ دين يدوي</button>
         ${c.credit > 0 ? `<button class="btn btn-gold btn-sm pay-client" data-id="${c.id}">تسديد</button>` : ""}
         ${c.credit === 0 ? `<button class="btn btn-danger btn-sm del-client" data-id="${c.id}">حذف</button>` : ""}
       </div>
@@ -1570,6 +1571,26 @@ function renderClients(){
     btn.addEventListener("click", () => {
       const c = state.clients.find(x => x.id === parseInt(btn.dataset.id));
       if(c) showClientInvoiceHistory(c.id, c.name);
+    });
+  });
+  list.querySelectorAll(".add-manual-debt").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = parseInt(btn.dataset.id);
+      const c = state.clients.find(x => x.id === id);
+      if(!c) return;
+      const amtStr = prompt("شحال الدين اللي بغيتي تسجلو على " + c.name + "؟ (بلا ماتدخل سلعة ولا فاتورة)");
+      if(amtStr === null) return;
+      const amt = parseFloat(amtStr);
+      if(!amt || amt <= 0){ showToast("دخل مبلغ صحيح"); return; }
+      const reason = prompt("علاش هاد الدين؟ (اختياري، مثلا: سلف، دين قديم...)", "") || "دين يدوي";
+      c.credit = fmtNum(c.credit + amt);
+      c.ledger = c.ledger || [];
+      c.ledger.push({date: new Date().toISOString(), desc: reason, amount: amt, type:"debt"});
+      const ok = await saveState();
+      if(!ok){ c.credit = fmtNum(c.credit - amt); c.ledger.pop(); showStorageFullModal(); return; }
+      renderClients();
+      renderDashboard();
+      showToast("تسجل الدين");
     });
   });
   list.querySelectorAll(".pay-client").forEach(btn => {
