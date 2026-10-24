@@ -2724,14 +2724,82 @@ document.getElementById("resetAllBtn").addEventListener("click", async () => {
 });
 
 // ---------- INIT ----------
+// IMPORTANT: when a new version of the app is deployed, the service worker
+// updates itself silently in the background. Without this, a tab that was
+// already open keeps running the OLD code in memory (even though the cache
+// underneath switched to the new files) until the person manually closes and
+// reopens it. If that old code was from before a storage change, anything
+// entered during that stale session can end up saved in the wrong place and
+// "disappear" once a fresh tab loads the new code. Forcing one reload the
+// moment a new service worker takes over prevents that split-brain state.
 if('serviceWorker' in navigator){
+  let swRefreshed = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if(swRefreshed) return;
+    swRefreshed = true;
+    window.location.reload();
+  });
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('service-worker.js').catch(()=>{});
   });
 }
+
+// ---------- RECOVERY: catch data stranded in the old localStorage ----------
+// If a stale tab (see note above) ever saved fresh entries into the old
+// localStorage key instead of the new IndexedDB store, this finds it and
+// offers to bring it back instead of leaving it invisible on the device.
+async function checkLegacyLocalStorageRecovery(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(!raw) return;
+    const legacy = JSON.parse(raw);
+    const legacyInvoices = legacy.invoices || [];
+    const currentInvoices = state.invoices || [];
+    const legacyCount = legacyInvoices.length;
+    const currentCount = currentInvoices.length;
+    const legacyLast = legacyCount ? legacyInvoices[legacyCount-1].date : null;
+    const currentLast = currentCount ? currentInvoices[currentCount-1].date : null;
+    const looksNewer = legacyCount > currentCount || (legacyLast && (!currentLast || legacyLast > currentLast));
+    if(!looksNewer) return;
+    showLegacyRecoveryModal(legacy, {
+      legacyCount, currentCount,
+      legacyLast: legacyLast ? legacyLast.slice(0,16).replace('T',' — ') : "ماكاين حتى فاتورة",
+      currentLast: currentLast ? currentLast.slice(0,16).replace('T',' — ') : "ماكاين حتى فاتورة"
+    });
+  }catch(e){ console.error("legacy recovery check failed", e); }
+}
+function showLegacyRecoveryModal(legacy, info){
+  openModal(`
+    <h3>⚠️ لقينا بيانات أخرى محفوظة فهاد الهاتف</h3>
+    <div style="font-size:12.5px;margin-bottom:12px;">
+      كاينة نسخة قديمة ديال البيانات محفوظة بوحدها فهاد الهاتف (غالبا من جلسة خدمتي فيها قبل ماتتحدث الصفحة).
+      <br><br>
+      📦 البيانات الحالية اللي بانة ليك دابا: <b>${info.currentCount}</b> فاتورة — آخر وحدة فـ <b>${info.currentLast}</b>
+      <br>
+      🗄️ البيانات القديمة اللي لقينا محفوظة: <b>${info.legacyCount}</b> فاتورة — آخر وحدة فـ <b>${info.legacyLast}</b>
+      <br><br>
+      إلا كانت هاد البيانات القديمة فيها اللي دخلتي اليوم (الستوك، البيع، الديون)، نقر "استرجع" تحت.
+    </div>
+    <button class="btn btn-gold btn-full" id="legacyRestoreBtn" style="margin-bottom:8px;">♻️ استرجع هاد البيانات</button>
+    <button class="btn btn-outline btn-full" id="legacyKeepBtn">لا، خلي البيانات الحالية كيما هي</button>
+  `);
+  document.getElementById("legacyRestoreBtn").addEventListener("click", async () => {
+    state = Object.assign(state, legacy);
+    if(!Array.isArray(state.orders)) state.orders = [];
+    if(!state.weeklyPlan || typeof state.weeklyPlan !== "object") state.weeklyPlan = {0:"",1:"",2:"",3:"",4:"",5:"",6:""};
+    for(let i=0;i<7;i++){ if(state.weeklyPlan[i] === undefined) state.weeklyPlan[i] = ""; }
+    await saveState();
+    closeModal();
+    renderDashboard(); renderProducts(); renderClients(); renderSuppliers(); renderInvoices(); renderOrders();
+    showToast("تم استرجاع البيانات");
+  });
+  document.getElementById("legacyKeepBtn").addEventListener("click", closeModal);
+}
+
 async function init(){
   await loadState();
   renderDashboard();
+  await checkLegacyLocalStorageRecovery();
 }
 init();
 </script>
