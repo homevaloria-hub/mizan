@@ -1700,22 +1700,75 @@ document.getElementById("toggleAddClient").addEventListener("click", () => {
   if(!panel.classList.contains("open")) clearClientForm();
   panel.classList.toggle("open");
 });
-document.getElementById("cGpsBtn").addEventListener("click", () => {
-  getCurrentGps().then(g => { document.getElementById("cGps").value = g; showToast("تسجل الموقع"); })
-    .catch(() => showToast("ماقدرتش نجيب الموقع، فعل GPS وعطي الإذن"));
-});
-function getCurrentGps(){
-  return new Promise((resolve, reject) => {
-    if(!navigator.geolocation){ reject(new Error("no geo")); return; }
-    navigator.geolocation.getCurrentPosition(
-      pos => resolve(pos.coords.latitude.toFixed(6) + "," + pos.coords.longitude.toFixed(6)),
-      err => reject(err), { enableHighAccuracy:true, timeout:15000 });
-  });
+function getPosition(opts){
+  return new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, opts));
 }
+// precise first, then retry with low accuracy (network/Wi-Fi) before giving up
+async function getCurrentGps(){
+  if(!navigator.geolocation){ const e = new Error("no geolocation"); e.code = 0; throw e; }
+  let pos;
+  try{ pos = await getPosition({ enableHighAccuracy:true, timeout:10000, maximumAge:60000 }); }
+  catch(err){
+    if(err && err.code === 1) throw err; // permission denied: retrying will not help
+    pos = await getPosition({ enableHighAccuracy:false, timeout:20000, maximumAge:600000 });
+  }
+  return pos.coords.latitude.toFixed(6) + "," + pos.coords.longitude.toFixed(6);
+}
+// accepts "35.57,-5.36", a Google Maps link (@lat,lng / q=lat,lng / !3d..!4d..), or pasted text
 function parseGps(str){
-  const m = String(str||"").match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
-  return m ? { lat: parseFloat(m[1]), lng: parseFloat(m[2]) } : null;
+  let t = String(str || "");
+  try{ t = decodeURIComponent(t); }catch(e){}
+  const pats = [
+    /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/,
+    /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/,
+    /[?&](?:q|ll|query|destination)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/,
+    /(-?\d+(?:\.\d+)?)\s*[,;،\s]\s*(-?\d+(?:\.\d+)?)/
+  ];
+  for(const re of pats){
+    const m = t.match(re);
+    if(m){
+      const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+      if(Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng };
+    }
+  }
+  return null;
 }
+function gpsString(g){ return g.lat.toFixed(6) + "," + g.lng.toFixed(6); }
+
+function showGpsHelp(err, apply){
+  const code = err && typeof err.code === "number" ? err.code : 0;
+  const reasons = {
+    0: "هاد التطبيق/المتصفح ماكيدعمش تحديد الموقع.",
+    1: "الإذن ديال الموقع مرفوض. من إعدادات الهاتف ← التطبيقات ← Kontajiran ← الأذونات ← الموقع ← السماح. وإلا كان APK وباقي ماخدمش، خاص يتصنع من جديد بخيار Location delegation فـ PWABuilder.",
+    2: "ماقدرش يلقى الموقع. فعّل Location/GPS من الإعدادات السريعة، وخرج لمكان مفتوح شوية.",
+    3: "داز الوقت بلا ما يلقى الموقع. جرب فمكان مفتوح وعاود."
+  };
+  openModal(`
+    <h3>📍 ماقدرتش نجيب الموقع</h3>
+    <div style="font-size:12.5px;margin-bottom:12px;">${reasons[code] || reasons[2]}</div>
+    <button class="btn btn-gold btn-full" id="gpsRetryBtn" style="margin-bottom:8px;">🔄 عاود</button>
+    <div style="font-size:12px;margin:10px 0 6px;">أو دخل الموقع يدويا: حل Google Maps، ضغط بقوة على مكان المحل، انسخ الأرقام لي كيبانو (بحال 35.5785, -5.3684) ولا انسخ رابط الموقع، ولصقو هنا.</div>
+    <input type="text" id="gpsManualInput" placeholder="35.5785, -5.3684">
+    <button class="btn btn-outline btn-full" id="gpsManualBtn" style="margin-top:8px;">✍️ حفظ الموقع</button>
+    <button class="modal-close" id="gpsCloseBtn">إغلاق</button>
+  `);
+  document.getElementById("gpsRetryBtn").addEventListener("click", () => { closeModal(); captureGps(apply); });
+  document.getElementById("gpsManualBtn").addEventListener("click", () => {
+    const g = parseGps(document.getElementById("gpsManualInput").value);
+    if(!g){ showToast("الإحداثيات ماصحاحش"); return; }
+    closeModal();
+    apply(gpsString(g));
+  });
+  document.getElementById("gpsCloseBtn").addEventListener("click", closeModal);
+}
+async function captureGps(apply){
+  showToast("كنقلب على الموقع...");
+  try{ apply(await getCurrentGps()); }
+  catch(err){ showGpsHelp(err, apply); }
+}
+document.getElementById("cGpsBtn").addEventListener("click", () => {
+  captureGps(g => { document.getElementById("cGps").value = g; showToast("تسجل الموقع"); });
+});
 function mapsLinkForClient(c){
   const g = parseGps(c.gps);
   if(g) return `https://www.google.com/maps/dir/?api=1&destination=${g.lat},${g.lng}`;
@@ -1743,10 +1796,11 @@ document.getElementById("saveClientBtn").addEventListener("click", async () => {
     shopType: document.getElementById("cShopType").value.trim(),
     address: document.getElementById("cAddress").value.trim(),
     status: document.getElementById("cStatus").value,
-    gps: document.getElementById("cGps").value.trim(),
+    gps: (function(){ const raw = document.getElementById("cGps").value.trim(); if(!raw) return ""; const g = parseGps(raw); return g ? gpsString(g) : null; })(),
     notes: document.getElementById("cNotes").value.trim()
   };
   if(!name){ showToast("خاصك تكتب اسم الزبون"); return; }
+  if(extra.gps === null){ showToast("الإحداثيات ماصحاحش (مثال: 35.5785, -5.3684)"); return; }
   if(editingClientId){
     const c = state.clients.find(x => x.id === editingClientId);
     if(c) Object.assign(c, { name, phone, sector }, extra);
@@ -1841,15 +1895,15 @@ function renderClients(){
     });
   });
   list.querySelectorAll(".client-gps").forEach(btn => {
-    btn.addEventListener("click", async () => {
+    btn.addEventListener("click", () => {
       const c = state.clients.find(x => x.id === parseInt(btn.dataset.id));
       if(!c) return;
-      try{
-        c.gps = await getCurrentGps();
+      captureGps(async g => {
+        c.gps = g;
         await saveState();
         renderClients();
-        showToast("تسجل موقع " + c.name + " (خاصك تكون واقف عندو)");
-      }catch(e){ showToast("ماقدرتش نجيب الموقع، فعل GPS وعطي الإذن"); }
+        showToast("تسجل موقع " + c.name);
+      });
     });
   });
   list.querySelectorAll(".client-map").forEach(btn => {
@@ -3652,6 +3706,14 @@ const I18N_EXACT = [
 ["دخل كود الاسترجاع (8 أرقام) اللي عطاك التطبيق منين فعلتي الرمز","Saisissez le code de récupération (8 chiffres) reçu lors de l'activation","Introduce el código de recuperación (8 dígitos) que recibiste al activarlo"],
 ["اكتبو فشي بلاصة آمنة. إلا نسيتي الرمز هو الوحيد اللي غيفتح ليك التطبيق. ماغيبانش مرة أخرى.","Notez-le en lieu sûr. Si vous oubliez le code, c'est le seul moyen d'ouvrir l'application. Il ne sera plus affiché.","Anótalo en un lugar seguro. Si olvidas el código, es la única forma de abrir la app. No se volverá a mostrar."],
 ["اطبع الفاتورة","Imprimer la facture","Imprimir factura"],["صيفط عبر واتساب","Envoyer par WhatsApp","Enviar por WhatsApp"],["حفظ غير كذا، بلا طباعة","Enregistrer seulement, sans imprimer","Solo guardar, sin imprimir"]
+,
+["ماقدرتش نجيب الموقع","Impossible d'obtenir la position","No se pudo obtener la ubicación"],["عاود","Réessayer","Reintentar"],["حفظ الموقع","Enregistrer la position","Guardar ubicación"],
+["كنقلب على الموقع...","Recherche de la position...","Buscando ubicación..."],["تسجل الموقع","Position enregistrée","Ubicación guardada"],
+["الإحداثيات ماصحاحش","Coordonnées invalides","Coordenadas no válidas"],
+["هاد التطبيق/المتصفح ماكيدعمش تحديد الموقع.","Cette application/navigateur ne gère pas la localisation.","Esta app/navegador no admite la ubicación."],
+["ماقدرش يلقى الموقع. فعّل Location/GPS من الإعدادات السريعة، وخرج لمكان مفتوح شوية.","Position introuvable. Activez la localisation/GPS et sortez à l'extérieur.","No se encuentra la ubicación. Activa la localización/GPS y sal al exterior."],
+["داز الوقت بلا ما يلقى الموقع. جرب فمكان مفتوح وعاود.","Délai dépassé. Essayez en extérieur puis réessayez.","Tiempo agotado. Prueba al aire libre y reintenta."],
+["الإذن ديال الموقع مرفوض. من إعدادات الهاتف ← التطبيقات ← Kontajiran ← الأذونات ← الموقع ← السماح. وإلا كان APK وباقي ماخدمش، خاص يتصنع من جديد بخيار Location delegation فـ PWABuilder.","Autorisation refusée. Paramètres ← Applications ← Kontajiran ← Autorisations ← Position ← Autoriser. Si l'APK ne fonctionne toujours pas, régénérez-le avec « Location delegation » dans PWABuilder.","Permiso denegado. Ajustes ← Aplicaciones ← Kontajiran ← Permisos ← Ubicación ← Permitir. Si el APK sigue sin funcionar, vuelve a generarlo con «Location delegation» en PWABuilder."]
 ];
 const I18N_PARTIAL = [
 ["د.م","DH","DH"],["ستوك:","Stock :","Stock:"],["جملة:","Achat :","Compra:"],["بيع:","Vente :","Venta:"],["هامش:","Marge :","Margen:"],["عرض:","Promo :","Promo:"],
