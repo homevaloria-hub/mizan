@@ -444,6 +444,19 @@
   body.theme-black .stat.good .val{color:#6FCF97;}
   body.theme-black .stat.warn .val{color:#E5826A;}
 
+  header.topbar{position:relative;}
+  .top-actions{position:absolute;top:14px;left:14px;display:flex;gap:8px;}
+  .top-actions button{background:transparent;border:1px solid currentColor;color:inherit;border-radius:10px;padding:6px 10px;font-size:16px;cursor:pointer;}
+  .chips-scroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px;}
+  .chips-scroll .chip{white-space:nowrap;}
+  .mini-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .mini-table td{padding:4px 2px;border-bottom:1px solid var(--line);}
+  .tag-warn{background:var(--danger-soft);color:var(--danger);}
+  .tag-ok{background:var(--ok-soft);color:var(--ok);}
+  .tag-gold{background:var(--gold-soft);color:var(--deep-2);}
+  .ord-row{display:grid;grid-template-columns:1fr 62px 72px 72px 28px;gap:4px;align-items:center;margin-bottom:6px;}
+  .ord-row select,.ord-row input{padding:6px 4px;font-size:12.5px;}
+  .ord-note{font-size:11px;color:var(--muted);margin:-2px 0 6px 0;}
   /* lock screen */
   #lockScreen{
     position:fixed;inset:0;background:#000;color:#D4AF37;z-index:9999;
@@ -519,6 +532,7 @@
 <header class="topbar">
   <h1>Kontajiran Store</h1>
   <div class="sub" id="topSub">تسيير المتجر</div>
+  <div class="top-actions"><button id="globalSearchBtn" title="بحث">🔍</button><button id="quickActionsBtn" title="إجراءات سريعة">⚡</button></div>
 </header>
 
 <main>
@@ -535,7 +549,7 @@
       <div class="stat"><div class="lbl">رأس المال (قيمة الستوك بثمن الجملة)</div><div class="val num" id="statCapital">0</div></div>
       <div class="stat"><div class="lbl">قيمة الستوك بثمن البيع</div><div class="val num" id="statStockValue">0</div></div>
       <div class="stat good"><div class="lbl">مبيعات اليوم</div><div class="val num" id="statSalesToday">0</div></div>
-      <div class="stat good"><div class="lbl">ربح اليوم</div><div class="val num" id="statProfitToday">0</div></div>
+      <div class="stat good"><div class="lbl">ربح فعلي اليوم</div><div class="val num" id="statProfitToday">0</div></div>
       <div class="stat warn"><div class="lbl">ديون عند الزبناء</div><div class="val num" id="statClientsCredit">0</div></div>
       <div class="stat warn"><div class="lbl">ديون عند الموردين</div><div class="val num" id="statSuppliersDebt">0</div></div>
       <div class="stat warn"><div class="lbl">مصاريف اليوم</div><div class="val num" id="statExpensesToday">0</div></div>
@@ -543,7 +557,20 @@
       <div class="stat"><div class="lbl">زيارات اليوم</div><div class="val num" id="statVisitsToday">0</div></div>
       <div class="stat"><div class="lbl">طلبيات اليوم</div><div class="val num" id="statOrdersToday">0</div></div>
       <div class="stat"><div class="lbl">زبناء جداد (هاد الشهر)</div><div class="val num" id="statNewClients">0</div></div>
+      <div class="stat good"><div class="lbl">الفلوس المقبوضة اليوم</div><div class="val num" id="statCashToday">0</div></div>
+      <div class="stat"><div class="lbl">ربح متوقع (طلبيات جارية) — مماشي فعلي</div><div class="val num" id="statExpectedProfit">0</div></div>
+      <div class="stat"><div class="lbl">طلبيات جارية</div><div class="val num" id="statActiveOrders">0</div></div>
+      <div class="stat warn"><div class="lbl">تنتظر التموين</div><div class="val num" id="statWaitingSupply">0</div></div>
+      <div class="stat"><div class="lbl">جاهزة للتوصيل</div><div class="val num" id="statReadyOrders">0</div></div>
+      <div class="stat good"><div class="lbl">توصيلات ناجحة (هاد الشهر)</div><div class="val num" id="statDeliveredMonth">0</div></div>
+      <div class="stat warn"><div class="lbl">سلع نافدة</div><div class="val num" id="statOutOfStock">0</div></div>
     </div>
+    <div class="card" style="margin-top:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;"><h2 style="margin:0;">📊 ملخص الفترة: <span id="dashPeriodLabel"></span></h2><button class="btn btn-outline btn-sm" id="dashPeriodBtn">🗓️ غيّر</button></div>
+      <div class="stat-grid" id="dashPeriodStats" style="margin-top:10px;"></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;">الأرقام "الفعلية" كتحسب غير من الطلبيات المسلّمة والبيع المباشر. الربح المتوقع منفصل ومكيتحسبش فالربح الفعلي.</div>
+    </div>
+    <div class="card"><h2>🏆 أحسن الزبناء (هاد الشهر)</h2><div id="dashBestClients"></div></div>
     <div class="card" style="margin-top:12px;">
       <h2>🔔 متابعات اليوم</h2>
       <div id="dashFollowups"></div>
@@ -638,6 +665,10 @@
       <input type="text" id="pName" placeholder="مثلا: بسكويت XYZ">
       <label>الباركود (اختياري)</label>
       <input type="text" id="pBarcode" placeholder="امسح أو دخل الباركود">
+      <div class="field-row">
+        <div><label>مرجع / SKU</label><input type="text" id="pSku" placeholder="REF-001"></div>
+        <div><label>الوحدة</label><select id="pUnit"><option value="قطعة">قطعة</option><option value="كرطون">كرطون</option><option value="باكيط">باكيط</option></select></div>
+      </div>
       <label>السيكطور / الصنف</label>
       <input type="text" id="pSector" placeholder="مثلا: بسكويت، شوكولا">
       <label>الماركة / الشركة (اختياري)</label>
@@ -650,6 +681,8 @@
       <input type="number" id="pPromo" placeholder="خليه خاوي إلا ماكاينش عرض">
       <label>الكمية (ستوك)</label>
       <input type="number" id="pQty" placeholder="0">
+      <label>الوصف (اختياري)</label><input type="text" id="pDesc" placeholder="وصف قصير للسلعة">
+      <label>الحالة</label><select id="pActive"><option value="1">نشيطة</option><option value="0">غير نشيطة (مؤرشفة)</option></select>
       <div class="field-row">
         <div><label>أقل ستوك (تنبيه)</label><input type="number" id="pMinStock" placeholder="5"></div>
         <div><label>المورد</label><select id="pSupplier"><option value="">بلا مورد</option></select></div>
@@ -661,7 +694,15 @@
         <button class="btn btn-outline" id="cancelProductBtn">إلغاء</button>
       </div>
     </div>
-    <input type="text" id="productSearch" placeholder="بحث عن سلعة أو سيكطور..." style="margin-bottom:10px;">
+    <div class="btn-row" style="margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+      <button class="btn btn-outline btn-sm" id="exportProductsBtn">📤 تصدير السلع (CSV)</button>
+      <button class="btn btn-outline btn-sm" id="importProductsBtn">📥 استيراد سلع (CSV)</button>
+      <input type="file" id="importProductsFile" accept=".csv,text/csv" style="display:none;">
+    </div>
+    <input type="text" id="productSearch" placeholder="بحث عن سلعة أو سيكطور..." style="margin-bottom:8px;">
+    <select id="productStockFilter" style="margin-bottom:10px;">
+      <option value="all">كل السلع</option><option value="in">متوفرة</option><option value="out">نافدة</option><option value="low">ستوك قليل</option><option value="inactive">غير نشيطة</option>
+    </select>
     <div id="productList"></div>
     <div class="card" style="margin-top:14px;">
       <h2>⏳ سلع قريبة من التقادي / تقادات</h2>
@@ -735,7 +776,11 @@
         <div><label>المدينة</label><input type="text" id="cCity" placeholder="تطوان"></div>
         <div><label>نوع المحل</label><input type="text" id="cShopType" placeholder="بقالة، سوبرماركت..."></div>
       </div>
-      <label>العنوان</label><input type="text" id="cAddress" placeholder="الحي، الشارع">
+      <div class="field-row">
+        <div><label>الحي</label><input type="text" id="cDistrict" placeholder="الحي"></div>
+        <div><label>صنف الزبون</label><input type="text" id="cCategory" placeholder="جملة، تقسيط، VIP..."></div>
+      </div>
+      <label>العنوان</label><input type="text" id="cAddress" placeholder="الشارع، رقم المحل">
       <label>السيكطور</label>
       <select id="cSector"><option value="">بلا سيكطور</option></select>
       <label>الحالة</label>
@@ -766,7 +811,11 @@
         <button class="btn btn-outline" id="cancelSupplierBtn">إلغاء</button>
       </div>
     </div>
+    <div class="btn-row" style="margin-bottom:10px;">
+      <button class="btn btn-gold btn-full" id="newPurchaseBtn">🛒 فاتورة شراء جديدة</button>
+    </div>
     <div id="supplierList"></div>
+    <div class="card" style="margin-top:12px;"><h2>🧾 فواتير الشراء</h2><div id="purchaseList"></div></div>
   </section>
 
   <!-- INVOICES -->
@@ -785,30 +834,22 @@
     <div class="catalog-grid" id="catalogGrid"></div>
   </section>
 
-  <!-- ORDERS (طلبيات الزبناء) -->
+  <!-- ORDERS -->
   <section class="view" id="view-orders">
     <div class="btn-row" style="margin-bottom:10px;">
-      <button class="btn btn-primary btn-full" id="toggleAddOrder">+ زيد طلبية</button>
+      <button class="btn btn-primary btn-full" id="newOrderBtn">+ طلبية جديدة</button>
     </div>
-    <div class="form-panel" id="orderForm">
-      <label>الزبون</label>
-      <select id="oClient"><option value="">زبون بلا تسجيل (كتب اسمو تحت)</option></select>
-      <label>ولا كتب اسم الزبون هنا</label>
-      <input type="text" id="oClientName" placeholder="اسم الزبون">
-      <label>السلعة المطلوبة</label>
-      <input type="text" id="oProduct" placeholder="مثلا: شامبو XYZ">
-      <div class="field-row">
-        <div><label>الكمية</label><input type="number" id="oQty" value="1" min="1"></div>
-        <div><label>الثمن ديال الوحدة</label><input type="number" id="oPrice" placeholder="0"></div>
-      </div>
-      <label>ملاحظة (اختياري)</label>
-      <input type="text" id="oNote" placeholder="مثلا: اللون الأزرق، الثمن المتفق عليه...">
-      <div class="btn-row" style="margin-top:10px;">
-        <button class="btn btn-gold btn-full" id="saveOrderBtn">حفظ الطلبية</button>
-        <button class="btn btn-outline" id="cancelOrderBtn">إلغاء</button>
-      </div>
-    </div>
+    <input type="text" id="orderSearch" placeholder="بحث: رقم الطلبية، زبون، سلعة..." style="margin-bottom:8px;">
+    <div class="chips-scroll" id="orderStatusChips"></div>
+    <div id="orderSummary" style="margin-bottom:8px;"></div>
     <div id="orderList"></div>
+  </section>
+
+  <!-- DELIVERIES -->
+  <section class="view" id="view-deliveries">
+    <div class="chips-scroll" id="deliveryDateChips"></div>
+    <div id="deliverySummary" style="margin-bottom:8px;"></div>
+    <div id="deliveryList"></div>
   </section>
 
   <!-- VISITS -->
@@ -825,7 +866,9 @@
         <option value="no_purchase">ما اشتراش</option>
         <option value="absent">غايب / مسدود</option>
         <option value="followup">محتاج متابعة</option>
+        <option value="order">خدا طلبية</option>
       </select>
+      <label><input type="checkbox" id="vGps" checked style="width:auto;"> سجل موقعي الحالي مع الزيارة</label>
       <label>ملاحظة</label><input type="text" id="vNote" placeholder="شنو وقع فالزيارة">
       <label>الزيارة الجاية (اختياري)</label><input type="date" id="vNext">
       <div class="btn-row" style="margin-top:10px;">
@@ -842,20 +885,15 @@
     <div class="card">
       <h2>💰 المالية (هاد الشهر)</h2>
       <div class="stat-grid" id="financeStats"></div>
+      <div class="btn-row" style="margin-top:10px;"><button class="btn btn-outline btn-sm" id="capitalInBtn">➕ إضافة رأس مال</button><button class="btn btn-outline btn-sm" id="capitalOutBtn">➖ سحب صاحب المحل</button></div>
+      <div id="capitalList" style="margin-top:8px;"></div>
     </div>
     <div class="btn-row" style="margin-bottom:10px;">
       <button class="btn btn-primary btn-full" id="toggleAddExpense">+ زيد مصروف</button>
     </div>
     <div class="form-panel" id="expenseForm">
       <label>النوع</label>
-      <select id="eCategory">
-        <option value="fuel">وقود (كازوال)</option>
-        <option value="transport">نقل</option>
-        <option value="food">أكل وشرب</option>
-        <option value="rent">كراء</option>
-        <option value="salary">أجرة</option>
-        <option value="other">أخرى</option>
-      </select>
+      <div class="btn-row"><select id="eCategory"></select><button class="btn btn-outline btn-sm" id="eCatAddBtn" type="button">+ نوع</button></div>
       <div class="field-row">
         <div><label>المبلغ</label><input type="number" id="eAmount" placeholder="0"></div>
         <div><label>التاريخ</label><input type="date" id="eDate"></div>
@@ -895,6 +933,7 @@
       </div>
       <div style="font-size:11px;color:var(--muted);margin-top:8px;">Excel كيتحل بالملف CSV. PDF: من نافذة الطباعة اختار "حفظ كـ PDF".</div>
     </div>
+    <div id="repBreakdowns"></div>
     <div class="card">
       <h2>🔥 الأكثر مبيعا</h2>
       <div id="repTopList"></div>
@@ -923,6 +962,7 @@
   <button data-view="suppliers"><span class="ic">▣</span>الموردين</button>
   <button data-view="invoices"><span class="ic">▦</span>الفواتير</button>
   <button data-view="orders"><span class="ic">☆</span>طلبيات</button>
+  <button data-view="deliveries"><span class="ic">🚚</span>توصيل</button>
   <button data-view="visits"><span class="ic">📍</span>زيارات</button>
   <button data-view="expenses"><span class="ic">💸</span>مصاريف</button>
   <button data-view="reports"><span class="ic">📊</span>تقارير</button>
@@ -953,9 +993,13 @@ let state = {
   orders: [],
   expenses: [],
   visits: [],
+  purchases: [],
+  stockMovements: [],
+  capitalMoves: [],
+  expenseCats: [],
   sectors: ["تطوان", "مرتيل"],
   weeklyPlan: {0:"",1:"",2:"",3:"",4:"",5:"",6:""},
-  nextId: { product: 1, client: 1, supplier: 1, invoice: 1, order: 1, expense: 1, visit: 1 }
+  nextId: { product: 1, client: 1, supplier: 1, invoice: 1, order: 1, expense: 1, visit: 1, payment: 1, purchase: 1, move: 1, capital: 1 }
 };
 let cart = [];
 let activeSectorFilter = "";
@@ -1090,8 +1134,10 @@ async function loadState(){
       if(!Array.isArray(state.orders)) state.orders = [];
       if(!Array.isArray(state.expenses)) state.expenses = [];
       if(!Array.isArray(state.visits)) state.visits = [];
+      ["purchases","stockMovements","capitalMoves","expenseCats"].forEach(k => { if(!Array.isArray(state[k])) state[k] = []; });
       if(!state.weeklyPlan || typeof state.weeklyPlan !== "object") state.weeklyPlan = {0:"",1:"",2:"",3:"",4:"",5:"",6:""};
       for(let i=0;i<7;i++){ if(state.weeklyPlan[i] === undefined) state.weeklyPlan[i] = ""; }
+      migrateOrders();
     }
   }catch(e){ console.error("load failed", e); /* no existing data yet, or IndexedDB unavailable */ }
 }
@@ -1112,6 +1158,8 @@ function showView(name){
   if(name === "reports") renderReports();
   if(name === "visits") renderVisits();
   if(name === "expenses") renderExpenses();
+  if(name === "deliveries") renderDeliveries();
+  if(name === "suppliers") renderSuppliers();
 }
 document.querySelectorAll(".bottom-nav button").forEach(b => {
   b.addEventListener("click", () => showView(b.dataset.view));
@@ -1138,6 +1186,7 @@ function renderDashboard(){
   renderBackupReminder();
   renderStorageHealth();
   renderDashExtras(profitToday);
+  renderDashOrders();
 
   const low = state.products.filter(p => p.qty < ((p.minStock > 0) ? p.minStock : 5));
   const lowEl = document.getElementById("lowStockList");
@@ -1249,6 +1298,7 @@ document.getElementById("saveStocktakeBtn").addEventListener("click", async () =
     const p = state.products.find(x => x.id === parseInt(input.dataset.id));
     const newQty = parseFloat(input.value);
     if(p && !isNaN(newQty) && newQty !== p.qty){
+      logMove(p.id, fmtNum(newQty - p.qty), "adjustment", "جرد", p.name);
       p.qty = fmtNum(newQty);
       changedCount++;
     }
@@ -1271,6 +1321,10 @@ function clearProductForm(){
   document.getElementById("pBrand").value = "";
   document.getElementById("pMinStock").value = "";
   document.getElementById("pSupplier").value = "";
+  document.getElementById("pSku").value = "";
+  document.getElementById("pUnit").value = "قطعة";
+  document.getElementById("pDesc").value = "";
+  document.getElementById("pActive").value = "1";
   document.getElementById("pBuy").value = "";
   document.getElementById("pSell").value = "";
   document.getElementById("pPromo").value = "";
@@ -1293,6 +1347,10 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
   const sector = document.getElementById("pSector").value.trim();
   const brand = document.getElementById("pBrand").value.trim();
   const minStock = parseFloat(document.getElementById("pMinStock").value) || 0;
+  const sku = document.getElementById("pSku").value.trim();
+  const unit = document.getElementById("pUnit").value;
+  const description = document.getElementById("pDesc").value.trim();
+  const active = document.getElementById("pActive").value !== "0";
   const supplierId = document.getElementById("pSupplier").value ? parseInt(document.getElementById("pSupplier").value) : null;
   const buyPrice = parseFloat(document.getElementById("pBuy").value) || 0;
   const sellPrice = parseFloat(document.getElementById("pSell").value) || 0;
@@ -1312,16 +1370,18 @@ document.getElementById("saveProductBtn").addEventListener("click", async () => 
     if(p){
       snapshot = JSON.parse(JSON.stringify(p));
       const oldQty = p.qty;
-      p.name=name; p.barcode=barcode; p.sector=sector; p.brand=brand; p.minStock=minStock; p.supplierId=supplierId; p.buyPrice=buyPrice; p.sellPrice=sellPrice; p.promoPrice=promoPrice; p.qty=qty;
+      if(qty !== oldQty) logMove(p.id, fmtNum(qty - oldQty), "adjustment", "تعديل سلعة", p.name);
+      p.name=name; p.barcode=barcode; p.sector=sector; p.brand=brand; p.minStock=minStock; p.supplierId=supplierId; p.sku=sku; p.unit=unit; p.description=description; p.active=active; p.buyPrice=buyPrice; p.sellPrice=sellPrice; p.promoPrice=promoPrice; p.qty=qty;
       if(imageTouched) p.image = pendingImage || "";
       if(expiryVal && qty > oldQty){ addLot(p, qty - oldQty, expiryVal); }
     }
     editingProductId = null;
   } else {
     isNew = true;
-    const newP = { id: state.nextId.product++, name, barcode, sector, brand, minStock, supplierId, buyPrice, sellPrice, promoPrice, qty, image: pendingImage || "", lots: [] };
+    const newP = { id: state.nextId.product++, name, barcode, sector, brand, minStock, supplierId, sku, unit, description, active, buyPrice, sellPrice, promoPrice, qty, image: pendingImage || "", lots: [] };
     if(expiryVal && qty > 0) addLot(newP, qty, expiryVal);
     state.products.push(newP);
+    if(qty > 0) logMove(newP.id, qty, "opening", "سلعة جديدة", name);
   }
   const ok = await saveState();
   if(!ok){
@@ -1358,9 +1418,16 @@ function expiryBadge(days){
 function renderProducts(){
   const q = (document.getElementById("productSearch").value || "").trim().toLowerCase();
   const list = document.getElementById("productList");
-  const filtered = state.products.filter(p =>
-    !q || p.name.toLowerCase().includes(q) || (p.sector||"").toLowerCase().includes(q) || (p.barcode||"").toLowerCase().includes(q) || (p.brand||"").toLowerCase().includes(q)
-  );
+  const sf = (document.getElementById("productStockFilter") || {}).value || "all";
+  const filtered = state.products.filter(p => {
+    if(q && !(p.name.toLowerCase().includes(q) || (p.sector||"").toLowerCase().includes(q) || (p.barcode||"").toLowerCase().includes(q) || (p.brand||"").toLowerCase().includes(q) || (p.sku||"").toLowerCase().includes(q))) return false;
+    if(sf === "inactive") return p.active === false;
+    if(p.active === false && sf !== "all") return false;
+    if(sf === "in") return availableQty(p) > 0;
+    if(sf === "out") return p.qty <= 0;
+    if(sf === "low") return p.qty < ((p.minStock > 0) ? p.minStock : 5);
+    return true;
+  });
   if(filtered.length === 0){
     list.innerHTML = '<div class="empty-state">ماكاينش سلع، زيد أول سلعة ديالك</div>';
   } else {
@@ -1382,6 +1449,7 @@ function renderProducts(){
         </div>
         <div class="item-actions">
           <button class="icon-btn edit-product" data-id="${p.id}">✎</button>
+          <button class="icon-btn dup-product" data-id="${p.id}" title="نسخ">⧉</button>
           <button class="icon-btn danger del-product" data-id="${p.id}">✕</button>
         </div>
       </div>
@@ -1390,7 +1458,8 @@ function renderProducts(){
         <span>بيع: <b>${fmt(p.sellPrice)}</b></span>
         ${p.promoPrice ? `<span>عرض: <b>${fmt(p.promoPrice)}</b></span>` : ""}
         <span>هامش: <b>${fmt(margin)}</b></span>
-        <span>ستوك: <b>${p.qty}</b></span>
+        <span>ستوك: <b>${p.qty}</b>${reservedFor(p.id) ? ` <span class="item-tag tag-gold">محجوز ${reservedFor(p.id)} • متاح ${availableQty(p)}</span>` : ""} ${p.unit && p.unit !== "قطعة" ? `<span class="item-tag">${escapeHtml(p.unit)}</span>` : ""}${p.active === false ? ' <span class="item-tag tag-warn">مؤرشفة</span>' : ""}</span>
+        ${p.sku ? `<span>مرجع: <b>${escapeHtml(p.sku)}</b></span>` : ""}
         ${p.barcode ? `<span>باركود: <b>${escapeHtml(p.barcode)}</b></span>` : ""}
       </div>
       ${lots.length ? `<button class="btn btn-outline btn-sm toggle-lots" data-id="${p.id}" style="margin-top:6px;">📅 دفعات الصلاحية (${lots.length})</button>
@@ -1434,6 +1503,10 @@ function renderProducts(){
       document.getElementById("pBrand").value = p.brand || "";
       populateProductSupplierSelect();
       document.getElementById("pMinStock").value = p.minStock || "";
+      document.getElementById("pSku").value = p.sku || "";
+      document.getElementById("pUnit").value = p.unit || "قطعة";
+      document.getElementById("pDesc").value = p.description || "";
+      document.getElementById("pActive").value = p.active === false ? "0" : "1";
       document.getElementById("pSupplier").value = p.supplierId || "";
       document.getElementById("pBuy").value = p.buyPrice;
       document.getElementById("pSell").value = p.sellPrice;
@@ -1453,9 +1526,29 @@ function renderProducts(){
       window.scrollTo({top:0, behavior:"smooth"});
     });
   });
+  list.querySelectorAll(".dup-product").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const src = state.products.find(x => x.id === parseInt(btn.dataset.id));
+      if(!src) return;
+      const copy = Object.assign({}, JSON.parse(JSON.stringify(src)), { id: state.nextId.product++, name: src.name + " (نسخة)", barcode: "", qty: 0, lots: [] });
+      state.products.push(copy);
+      const ok = await saveState();
+      if(!ok){ state.products.pop(); state.nextId.product--; showStorageFullModal(); return; }
+      renderProducts(); showToast("تنسخات السلعة، عدّلها دابا");
+    });
+  });
   list.querySelectorAll(".del-product").forEach(btn => {
     btn.addEventListener("click", async () => {
       const id = parseInt(btn.dataset.id);
+      const p = state.products.find(x => x.id === id);
+      if(!p) return;
+      const used = state.invoices.some(i => i.items.some(it => it.productId === id)) || state.orders.some(o => o.items.some(it => it.productId === id)) || state.purchases.some(pu => pu.items.some(it => it.productId === id)) || state.stockMovements.some(m => m.productId === id);
+      if(used){
+        if(!confirm("هاد السلعة عندها تاريخ (فواتير/طلبيات/حركات). ماغتتمسحش باش ماتخربقش الأرقام، غتتأرشف (كتخبا من الكاطالوغ والبيع). نكمل؟")) return;
+        p.active = false;
+        await saveState(); renderProducts(); showToast("تأرشفات السلعة"); return;
+      }
+      if(!confirm("مسح هاد السلعة نهائيا؟")) return;
       state.products = state.products.filter(x => x.id !== id);
       await saveState();
       renderProducts();
@@ -1552,6 +1645,7 @@ function handleBarcodeEntry(){
     const oldQty = p.qty;
     const oldLots = JSON.parse(JSON.stringify(p.lots||[]));
     p.qty = fmtNum(p.qty + addQty);
+    logMove(p.id, addQty, "stock_in", "باركود", p.name);
     if(expiryStr && expiryStr.trim()) addLot(p, addQty, expiryStr.trim());
     saveState().then((ok) => {
       if(!ok){
@@ -1690,7 +1784,7 @@ function renderSectorFilterRow(){
 let editingClientId = null;
 function clearClientForm(){
   editingClientId = null;
-  ["cName","cShop","cPhone","cCity","cShopType","cAddress","cGps","cNotes"].forEach(id => document.getElementById(id).value = "");
+  ["cName","cShop","cPhone","cCity","cShopType","cAddress","cGps","cNotes","cDistrict","cCategory"].forEach(id => document.getElementById(id).value = "");
   document.getElementById("cSector").value = "";
   document.getElementById("cStatus").value = "active";
 }
@@ -1794,6 +1888,8 @@ document.getElementById("saveClientBtn").addEventListener("click", async () => {
     shopName: document.getElementById("cShop").value.trim(),
     city: document.getElementById("cCity").value.trim(),
     shopType: document.getElementById("cShopType").value.trim(),
+    district: document.getElementById("cDistrict").value.trim(),
+    category: document.getElementById("cCategory").value.trim(),
     address: document.getElementById("cAddress").value.trim(),
     status: document.getElementById("cStatus").value,
     gps: (function(){ const raw = document.getElementById("cGps").value.trim(); if(!raw) return ""; const g = parseGps(raw); return g ? gpsString(g) : null; })(),
@@ -1823,7 +1919,7 @@ function renderClients(){
   let filtered = activeSectorFilter
     ? state.clients.filter(c => c.sector === activeSectorFilter)
     : state.clients;
-  if(cq) filtered = filtered.filter(c => [c.name,c.shopName,c.phone,c.city,c.address].some(v => (v||"").toLowerCase().includes(cq)));
+  if(cq) filtered = filtered.filter(c => [c.name,c.shopName,c.phone,c.city,c.district,c.address].some(v => (v||"").toLowerCase().includes(cq)));
   if(filtered.length === 0){
     list.innerHTML = '<div class="empty-state">' + (state.clients.length === 0 ? "ماكاينش زبناء، زيد أول واحد" : "ماكاينش زبناء فهاد السيكطور") + '</div>';
     return;
@@ -1833,7 +1929,7 @@ function renderClients(){
       <div class="item-top">
         <div>
           <div class="item-name">${escapeHtml(c.name)}${c.shopName ? ' — ' + escapeHtml(c.shopName) : ''}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${escapeHtml(c.phone||"")}${c.city ? ' • ' + escapeHtml(c.city) : ''}${c.shopType ? ' • ' + escapeHtml(c.shopType) : ''}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${escapeHtml(c.phone||"")}${c.city ? ' • ' + escapeHtml(c.city) : ''}${c.shopType ? ' • ' + escapeHtml(c.shopType) : ''}${c.district ? ' • ' + escapeHtml(c.district) : ''}${c.category ? ' • ' + escapeHtml(c.category) : ''}</div>
           ${c.address ? `<div style="font-size:11px;color:var(--muted);">${escapeHtml(c.address)}</div>` : ""}
           ${c.notes ? `<div style="font-size:11px;color:var(--muted);">📝 ${escapeHtml(c.notes)}</div>` : ""}
           ${c.sector ? `<span class="item-tag">${escapeHtml(c.sector)}</span>` : ""}
@@ -1854,6 +1950,8 @@ function renderClients(){
         <button class="btn btn-outline btn-sm client-map" data-id="${c.id}">🗺️ الطريق</button>
         <button class="btn btn-outline btn-sm client-wa" data-id="${c.id}">💬 واتساب</button>
         <button class="btn btn-outline btn-sm client-visit" data-id="${c.id}">📝 زيارة</button>
+        <button class="btn btn-gold btn-sm client-profile" data-id="${c.id}">👤 الملف</button>
+        <button class="btn btn-outline btn-sm client-order" data-id="${c.id}">📋 طلبية</button>
       </div>
       <div class="ledger-mini" id="ledger-client-${c.id}">
         ${(c.ledger && c.ledger.length) ? c.ledger.slice().reverse().map(l => `
@@ -1885,6 +1983,8 @@ function renderClients(){
       document.getElementById("cPhone").value = c.phone || "";
       document.getElementById("cCity").value = c.city || "";
       document.getElementById("cShopType").value = c.shopType || "";
+      document.getElementById("cDistrict").value = c.district || "";
+      document.getElementById("cCategory").value = c.category || "";
       document.getElementById("cAddress").value = c.address || "";
       document.getElementById("cSector").value = c.sector || "";
       document.getElementById("cStatus").value = c.status || "active";
@@ -1921,6 +2021,8 @@ function renderClients(){
       window.open("https://wa.me/" + normalizePhone(c.phone), "_blank");
     });
   });
+  list.querySelectorAll(".client-profile").forEach(btn => btn.addEventListener("click", () => openClientProfile(parseInt(btn.dataset.id))));
+  list.querySelectorAll(".client-order").forEach(btn => btn.addEventListener("click", () => { showView("orders"); openOrderModal(null, { clientId: parseInt(btn.dataset.id) }); }));
   list.querySelectorAll(".client-visit").forEach(btn => {
     btn.addEventListener("click", () => {
       const id = parseInt(btn.dataset.id);
@@ -2001,6 +2103,7 @@ document.getElementById("saveSupplierBtn").addEventListener("click", async () =>
 });
 
 function renderSuppliers(){
+  renderPurchases();
   const list = document.getElementById("supplierList");
   if(state.suppliers.length === 0){
     list.innerHTML = '<div class="empty-state">ماكاينش موردين، زيد أول واحد</div>';
@@ -2017,7 +2120,8 @@ function renderSuppliers(){
       </div>
       <div class="btn-row" style="margin-top:10px;">
         <button class="btn btn-outline btn-sm toggle-ledger-s" data-id="${s.id}">السجل</button>
-        <button class="btn btn-outline btn-sm add-debt" data-id="${s.id}">تسجيل شراء</button>
+        <button class="btn btn-gold btn-sm sup-purchase" data-id="${s.id}">🛒 فاتورة شراء</button>
+        <button class="btn btn-outline btn-sm add-debt" data-id="${s.id}">➕ دين يدوي</button>
         ${s.debt > 0 ? `<button class="btn btn-gold btn-sm pay-supplier" data-id="${s.id}">خلصت</button>` : ""}
       </div>
       <div class="ledger-mini" id="ledger-supplier-${s.id}">
@@ -2028,6 +2132,7 @@ function renderSuppliers(){
     </div>
   `).join("");
 
+  list.querySelectorAll(".sup-purchase").forEach(btn => btn.addEventListener("click", () => openPurchaseModal({ supplierId: parseInt(btn.dataset.id) })));
   list.querySelectorAll(".toggle-ledger-s").forEach(btn => {
     btn.addEventListener("click", () => {
       document.getElementById("ledger-supplier-"+btn.dataset.id).classList.toggle("open");
@@ -2083,7 +2188,7 @@ function renderSaleView(){
     state.clients.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
 
   const prodSel = document.getElementById("saleProduct");
-  prodSel.innerHTML = state.products.map(p => `<option value="${p.id}">${escapeHtml(p.name)}${p.promoPrice ? ' 🔥عرض' : ''} (باقي: ${p.qty})</option>`).join("");
+  prodSel.innerHTML = state.products.map(p => `<option value="${p.id}">${escapeHtml(p.name)}${p.promoPrice ? ' 🔥عرض' : ''} (متاح: ${availableQty(p)})</option>`).join("");
 
   renderCart();
 }
@@ -2179,11 +2284,12 @@ document.getElementById("confirmSaleBtn").addEventListener("click", async () => 
   // check stock
   for(const item of cart){
     const p = state.products.find(x => x.id === item.productId);
-    if(!p || p.qty < item.qty){
-      showToast("الستوك ماكافيش ل " + item.name);
+    if(!p || availableQty(p) < item.qty){
+      showToast("الستوك المتاح ماكافيش ل " + item.name + " (دير طلبية تحت الطلب)");
       return;
     }
   }
+  const moveStart = state.stockMovements.length, moveId = state.nextId.move;
 
   // deduct stock
   cart.forEach(item => {
@@ -2206,6 +2312,7 @@ document.getElementById("confirmSaleBtn").addEventListener("click", async () => 
     profit: t.profit
   };
   state.invoices.push(invoice);
+  cart.forEach(item => logMove(item.productId, -item.qty, "sale", "فاتورة #" + invoice.id, item.name));
 
   if(clientId && creditAdded > 0){
     const c = state.clients.find(x => x.id === clientId);
@@ -2218,6 +2325,7 @@ document.getElementById("confirmSaleBtn").addEventListener("click", async () => 
   if(!ok){
     // roll back everything in memory so the UI doesn't lie about what was saved
     state.invoices.pop();
+    state.stockMovements.length = moveStart; state.nextId.move = moveId;
     cart.forEach(item => {
       const p = state.products.find(x => x.id === item.productId);
       if(p) p.qty = fmtNum(p.qty + item.qty);
@@ -2498,11 +2606,12 @@ function renderInvoices(){
       const id = parseInt(btn.dataset.id);
       const inv = state.invoices.find(x => x.id === id);
       if(!inv) return;
+      if(inv.orderId){ showToast("هاد الفاتورة تابعة لطلبية مسلّمة، ماتتمسحش. دير تسوية يدوية."); return; }
       if(!confirm("متأكد بغيتي تمسح فاتورة #"+inv.id+"؟ غادي ترجع الكمية للستوك ويتصحح دين الزبون.")) return;
       // restore stock
       inv.items.forEach(it => {
         const p = state.products.find(x => x.id === it.productId);
-        if(p) p.qty = fmtNum(p.qty + it.qty);
+        if(p){ p.qty = fmtNum(p.qty + it.qty); logMove(p.id, it.qty, "invoice_void", "مسح فاتورة #" + inv.id, it.name); }
       });
       // reverse client credit
       if(inv.clientId && inv.creditAdded > 0){
@@ -2529,14 +2638,18 @@ document.getElementById("invoiceSearch").addEventListener("input", renderInvoice
 let activeCatalogSector = "";
 let activeCatalogBrand = "";
 let catalogOwnerMode = false; // false = customer view (only in-stock), true = owner view (all)
+// out-of-stock products stay in the catalog (sellable on order). The owner can
+// still hide a specific product from the customer view with hideWhenOut.
 function catalogVisible(p){
-  return catalogOwnerMode || p.qty > 0 || p.showWhenOut === true;
+  if(p.active === false) return false;
+  if(catalogOwnerMode) return true;
+  return !(p.hideWhenOut === true && p.qty <= 0);
 }
 function renderCatalog(){
   const modeBar = document.getElementById("catalogModeBar");
   modeBar.innerHTML = catalogOwnerMode
     ? `<button class="btn btn-gold btn-full" id="catalogModeBtn">🔓 وضع صاحب المحل: كلشي ظاهر (نقر باش تدخل لوضع الزبون)</button>`
-    : `<button class="btn btn-outline btn-full" id="catalogModeBtn">👁️ وضع الزبون: السلع المتوفرة غير (نقر باش تشوف كلشي)</button>`;
+    : `<button class="btn btn-outline btn-full" id="catalogModeBtn">👁️ وضع الزبون: السلع النافدة كتبان "تحت الطلب" (نقر لوضع صاحب المحل)</button>`;
   document.getElementById("catalogModeBtn").addEventListener("click", () => {
     catalogOwnerMode = !catalogOwnerMode;
     renderCatalog();
@@ -2600,16 +2713,16 @@ function renderCatalog(){
           ${p.sector ? `<span class="catalog-sector">${escapeHtml(p.sector)}</span>` : ""}
         </div>
         <div class="catalog-price">${p.promoPrice ? `<span style="text-decoration:line-through;color:var(--muted);font-size:12px;">${fmt(p.sellPrice)}</span> <b style="color:#c0392b;">${fmt(p.promoPrice)}</b>` : fmt(p.sellPrice)}</div>
-        <div class="catalog-stock ${p.qty <= 0 ? 'out' : ''}">${p.qty <= 0 ? 'نافدة حاليا' : 'متوفرة: ' + p.qty}</div>
+        <div class="catalog-stock ${p.qty <= 0 ? 'out' : ''}">${p.qty <= 0 ? 'نافدة — تحت الطلب' : 'متوفرة: ' + availableQty(p)}</div>
         <div class="catalog-qty-row">
           <button class="qty-btn cat-minus" data-id="${p.id}">−</button>
           <input type="number" class="qty-input cat-qty" data-id="${p.id}" value="1" min="1">
           <button class="qty-btn cat-plus" data-id="${p.id}">+</button>
         </div>
         <div class="catalog-calc-total" id="cat-total-${p.id}">= ${fmt(p.promoPrice || p.sellPrice)}</div>
-        <button class="btn btn-gold catalog-add-btn cat-add-sale" data-id="${p.id}" ${p.qty<=0 ? "disabled style='opacity:0.5;'" : ""}>زيد للبيع</button>
-        ${p.qty<=0 ? `<button class="btn btn-outline catalog-add-btn cat-order" data-id="${p.id}" style="margin-top:6px;">📋 دير طلبية</button>` : ""}
-        ${(catalogOwnerMode && p.qty<=0) ? `<button class="btn btn-outline catalog-add-btn cat-toggle-show" data-id="${p.id}" style="margin-top:6px;">${p.showWhenOut ? '🙈 خبيها على الزبون' : '👁️ أظهرها للزبون'}</button>` : ""}
+        <button class="btn btn-gold catalog-add-btn cat-add-sale" data-id="${p.id}" ${availableQty(p)<=0 ? "disabled style='opacity:0.5;'" : ""}>زيد للبيع</button>
+        ${availableQty(p)<=0 ? `<button class="btn btn-primary catalog-add-btn cat-order" data-id="${p.id}" style="margin-top:6px;">📋 دير طلبية (تحت الطلب)</button>` : `<button class="btn btn-outline catalog-add-btn cat-order" data-id="${p.id}" style="margin-top:6px;">📋 طلبية</button>`}
+        ${(catalogOwnerMode && p.qty<=0) ? `<button class="btn btn-outline catalog-add-btn cat-toggle-show" data-id="${p.id}" style="margin-top:6px;">${p.hideWhenOut ? '👁️ أظهرها للزبون' : '🙈 خبيها على الزبون حتى تتوفر'}</button>` : ""}
       </div>
     </div>
   `).join("");
@@ -2648,9 +2761,9 @@ function renderCatalog(){
       const product = state.products.find(x => x.id === id);
       const input = grid.querySelector(`.cat-qty[data-id="${id}"]`);
       const qty = parseFloat(input.value) || 1;
-      if(!product || product.qty < qty){ showToast("الستوك ماكافيش"); return; }
+      if(!product || availableQty(product) < qty){ showToast("الستوك المتاح ماكافيش (دير طلبية تحت الطلب)"); return; }
       const alreadyInCart = cart.filter(c => c.productId === id).reduce((s,c)=>s+c.qty,0);
-      if(alreadyInCart + qty > product.qty){ showToast("الستوك ماكافيش (باقي " + product.qty + ")"); return; }
+      if(alreadyInCart + qty > availableQty(product)){ showToast("الستوك المتاح ماكافيش (متاح " + availableQty(product) + ")"); return; }
       cart.push({
         productId: product.id,
         name: product.name,
@@ -2666,39 +2779,34 @@ function renderCatalog(){
     btn.addEventListener("click", async () => {
       const product = state.products.find(x => x.id === parseInt(btn.dataset.id));
       if(!product) return;
-      product.showWhenOut = !product.showWhenOut;
+      product.hideWhenOut = !product.hideWhenOut;
       await saveState();
       renderCatalog();
-      showToast(product.showWhenOut ? "غتبان للزبون حتى وهي نافدة" : "غتبقى مخبية على الزبون حتى تتوفر");
+      showToast(product.hideWhenOut ? "غتبقى مخبية على الزبون حتى تتوفر" : "غتبان للزبون (تحت الطلب) حتى وهي نافدة");
     });
   });
   grid.querySelectorAll(".cat-order").forEach(btn => {
     btn.addEventListener("click", () => {
       const id = parseInt(btn.dataset.id);
-      const product = state.products.find(x => x.id === id);
-      if(!product) return;
+      const qtyEl = grid.querySelector(`.cat-qty[data-id="${id}"]`);
       showView("orders");
-      populateOrderClientSelect();
-      document.getElementById("orderForm").classList.add("open");
-      document.getElementById("oProduct").value = product.name;
-      window.scrollTo({top:0, behavior:"smooth"});
-      showToast("عمر اسم الزبون وحفظ الطلبية");
+      openOrderModal(null, { productId: id, qty: qtyEl ? (parseFloat(qtyEl.value) || 1) : 1 });
     });
   });
 }
 
 // ---------- SHARE CATALOG VIA WHATSAPP ----------
 document.getElementById("shareCatalogBtn").addEventListener("click", () => {
-  const items = state.products.filter(p => p.qty > 0 || p.showWhenOut === true)
+  const items = state.products.filter(p => p.active !== false && !(p.hideWhenOut && p.qty <= 0))
     .sort((a,b) => ((a.brand||"~").toLowerCase()).localeCompare((b.brand||"~").toLowerCase()) || a.name.localeCompare(b.name));
-  if(items.length === 0){ showToast("ماكاين حتى سلعة متوفرة باش تتصيفط"); return; }
+  if(items.length === 0){ showToast("ماكاين حتى سلعة باش تتصيفط"); return; }
   const lines = ["🛍️ *Kontajiran Store*", "📅 " + todayStr(), ""];
   let lastBrand = null;
   items.forEach(p => {
     const b = p.brand || "";
     if(b !== lastBrand){ lines.push(b ? "🏷️ *" + b + "*" : "—"); lastBrand = b; }
     const price = p.promoPrice ? `~${fmtNum(p.sellPrice)}~ *${fmtNum(p.promoPrice)} DH* 🔥` : `${fmtNum(p.sellPrice)} DH`;
-    lines.push(`• ${p.name} — ${price}`);
+    lines.push(`• ${p.name} — ${price}${p.qty <= 0 ? " (تحت الطلب)" : ""}`);
   });
   lines.push("", "📞 للطلب تواصل معنا");
   const text = lines.join("\n");
@@ -2710,124 +2818,9 @@ document.getElementById("shareCatalogBtn").addEventListener("click", () => {
   window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
 });
 
-// ---------- ORDERS (طلبيات الزبناء) ----------
-function populateOrderClientSelect(){
-  const sel = document.getElementById("oClient");
-  sel.innerHTML = '<option value="">زبون بلا تسجيل (كتب اسمو تحت)</option>' +
-    state.clients.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
-}
-document.getElementById("toggleAddOrder").addEventListener("click", () => {
-  populateOrderClientSelect();
-  document.getElementById("orderForm").classList.toggle("open");
-});
-document.getElementById("cancelOrderBtn").addEventListener("click", () => {
-  document.getElementById("orderForm").classList.remove("open");
-});
-document.getElementById("oClient").addEventListener("change", () => {
-  const sel = document.getElementById("oClient");
-  if(sel.value) document.getElementById("oClientName").value = "";
-});
-document.getElementById("saveOrderBtn").addEventListener("click", async () => {
-  const clientId = document.getElementById("oClient").value ? parseInt(document.getElementById("oClient").value) : null;
-  const typedName = document.getElementById("oClientName").value.trim();
-  const productName = document.getElementById("oProduct").value.trim();
-  const qty = parseFloat(document.getElementById("oQty").value) || 1;
-  const price = parseFloat(document.getElementById("oPrice").value) || 0;
-  const note = document.getElementById("oNote").value.trim();
-  if(!clientId && !typedName){ showToast("خاصك تختار زبون ولا تكتب اسمو"); return; }
-  if(!productName){ showToast("خاصك تكتب السلعة المطلوبة"); return; }
-  const clientName = clientId ? (state.clients.find(c=>c.id===clientId)||{}).name : typedName;
-  state.orders.push({
-    id: state.nextId.order++,
-    date: new Date().toISOString(),
-    clientId, clientName, productName, qty, price, note,
-    status: "new", payStatus: "unpaid"
-  });
-  await saveState();
-  document.getElementById("oClientName").value = "";
-  document.getElementById("oProduct").value = "";
-  document.getElementById("oQty").value = 1;
-  document.getElementById("oPrice").value = "";
-  document.getElementById("oNote").value = "";
-  document.getElementById("oClient").value = "";
-  document.getElementById("orderForm").classList.remove("open");
-  renderOrders();
-  showToast("تزادت الطلبية");
-});
-
-const ORDER_STATUS = { new:"جديدة", confirmed:"مؤكدة", delivered:"تسلّمات", cancelled:"ملغية" };
-const PAY_STATUS = { paid:"خالصة", partial:"خلص جزء", unpaid:"ما خلصش" };
-function orderStatusKey(o){
-  if(o.status === "pending") return "new";
-  if(o.status === "done") return "delivered";
-  return ORDER_STATUS[o.status] ? o.status : "new";
-}
-function renderOrders(){
-  const list = document.getElementById("orderList");
-  if(state.orders.length === 0){
-    list.innerHTML = '<div class="empty-state">ماكاين حتى طلبية بعد</div>';
-    return;
-  }
-  const sorted = state.orders.slice().reverse();
-  list.innerHTML = sorted.map(o => {
-    const st = orderStatusKey(o), ps = o.payStatus || "unpaid";
-    const total = fmtNum((o.price||0) * (o.qty||0));
-    return `
-    <div class="item-card">
-      <div class="item-top">
-        <div>
-          <div class="item-name">${escapeHtml(o.productName)} × ${o.qty}${total ? ' = ' + fmt(total) : ''}</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px;">الزبون: ${escapeHtml(o.clientName)}</div>
-          ${o.note ? `<div style="font-size:11.5px;color:var(--muted);margin-top:2px;">${escapeHtml(o.note)}</div>` : ""}
-          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${o.date.slice(0,16).replace('T',' — ')}</div>
-        </div>
-        <span class="order-status ${st === 'delivered' ? 'done' : (st === 'cancelled' ? 'pending' : '')}" style="${st==='new'||st==='confirmed' ? 'background:var(--gold-soft);color:var(--deep-2);' : ''}">${ORDER_STATUS[st]}</span>
-      </div>
-      <div class="field-row" style="margin-top:8px;">
-        <div><label>الحالة</label>
-          <select class="order-status-sel" data-id="${o.id}">${Object.keys(ORDER_STATUS).map(k => `<option value="${k}" ${k===st?'selected':''}>${ORDER_STATUS[k]}</option>`).join("")}</select></div>
-        <div><label>الأداء</label>
-          <select class="order-pay-sel" data-id="${o.id}">${Object.keys(PAY_STATUS).map(k => `<option value="${k}" ${k===ps?'selected':''}>${PAY_STATUS[k]}</option>`).join("")}</select></div>
-      </div>
-      <div class="btn-row" style="margin-top:10px;">
-        <button class="btn btn-danger btn-sm order-del" data-id="${o.id}">✕ حذف</button>
-      </div>
-    </div>`;
-  }).join("");
-
-  list.querySelectorAll(".order-status-sel").forEach(sel => {
-    sel.addEventListener("change", async () => {
-      const o = state.orders.find(x => x.id === parseInt(sel.dataset.id));
-      if(!o) return;
-      o.status = sel.value;
-      await saveState();
-      renderOrders();
-    });
-  });
-  list.querySelectorAll(".order-pay-sel").forEach(sel => {
-    sel.addEventListener("change", async () => {
-      const o = state.orders.find(x => x.id === parseInt(sel.dataset.id));
-      if(!o) return;
-      o.payStatus = sel.value;
-      await saveState();
-      renderOrders();
-    });
-  });
-  list.querySelectorAll(".order-del").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const id = parseInt(btn.dataset.id);
-      if(!confirm("متأكد بغيتي تمسح هاد الطلبية؟")) return;
-      state.orders = state.orders.filter(x => x.id !== id);
-      await saveState();
-      renderOrders();
-      showToast("تم الحذف");
-    });
-  });
-}
-
 // ---------- TODAY'S ROUTE (dashboard) ----------
 const DAY_NAMES = ["الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
-function renderTodayRoute(){
+function renderTodayRouteBase(){
   const dayIdx = new Date().getDay();
   const sector = (state.weeklyPlan || {})[dayIdx] || "";
   const el = document.getElementById("todayRouteCard");
@@ -2973,6 +2966,7 @@ function openPeriodModal(){
     }
     closeModal();
     renderReports();
+    renderDashboard();
   });
   document.getElementById("periodCloseBtn").addEventListener("click", closeModal);
 }
@@ -3008,6 +3002,7 @@ function renderReports(){
   `).join("") : '<div class="empty-state">ماكاين حتى سلعة</div>';
 
   renderWeeklyPlanRows();
+  renderReportBreakdowns(m);
 }
 
 function renderWeeklyPlanRows(){
@@ -3059,8 +3054,8 @@ function renderDashExtras(profitToday){
 }
 
 // ---------- EXPENSES & FINANCE ----------
-const EXPENSE_CATS = { fuel:"وقود (كازوال)", transport:"نقل", food:"أكل وشرب", rent:"كراء", salary:"أجرة", other:"أخرى" };
 document.getElementById("toggleAddExpense").addEventListener("click", () => {
+  populateExpenseCats();
   document.getElementById("eDate").value = todayStr();
   document.getElementById("expenseForm").classList.toggle("open");
 });
@@ -3087,28 +3082,34 @@ document.getElementById("saveExpenseBtn").addEventListener("click", async () => 
   showToast("تسجل المصروف");
 });
 function renderExpenses(){
-  const mKey = monthStr();
+  populateExpenseCats();
+  const mKey = monthStr(), now = new Date();
+  const first = mKey + "-01", last = todayStr(new Date(now.getFullYear(), now.getMonth() + 1, 0));
   const monthInvs = state.invoices.filter(inv => localMonthKey(inv.date) === mKey);
   const sales = fmtNum(monthInvs.reduce((x,i)=>x+i.total,0));
   const profit = fmtNum(monthInvs.reduce((x,i)=>x+i.profit,0));
-  const paidAtSale = monthInvs.reduce((x,i)=>x+i.paid,0);
-  const debtPayments = state.clients.reduce((x,c) => x + (c.ledger||[]).filter(l => l.type === "payment" && l.desc === "تسديد" && localMonthKey(l.date) === mKey).reduce((y,l)=>y+l.amount,0), 0);
-  const cashIn = fmtNum(paidAtSale + debtPayments);
-  const monthExps = state.expenses.filter(e => e.date.slice(0,7) === mKey);
-  const expTotal = fmtNum(monthExps.reduce((x,e)=>x+e.amount,0));
+  const cashIn = cashReceivedBetween(first, last), expTotal = expensesBetween(first, last);
+  const supOut = supplierCashOutBetween(first, last), cap = capitalBetween(first, last);
   const net = fmtNum(profit - expTotal);
-  const capital = state.products.reduce((x,pp)=> x + pp.qty*pp.buyPrice, 0);
-  const owed = state.clients.reduce((x,c)=> x + c.credit, 0);
-  const cashBalance = fmtNum(cashIn - expTotal);
+  const capAll = capitalBetween("", "");
+  const cashBalance = fmtNum(cashReceivedBetween("", "") - expensesBetween("", "") - supplierCashOutBetween("", "") + capAll.injections - capAll.withdrawals);
+  const stockCap = state.products.reduce((x,pp)=> x + pp.qty*pp.buyPrice, 0);
+  const owed = state.clients.reduce((x,c)=> x + c.credit, 0), owe = state.suppliers.reduce((x,s)=> x + s.debt, 0);
   document.getElementById("financeStats").innerHTML = `
-    <div class="stat good"><div class="lbl">المبيعات</div><div class="val num">${fmt(sales)}</div></div>
-    <div class="stat good"><div class="lbl">الربح الإجمالي</div><div class="val num">${fmt(profit)}</div></div>
+    <div class="stat good"><div class="lbl">المبيعات المؤكدة (هاد الشهر)</div><div class="val num">${fmt(sales)}</div></div>
+    <div class="stat good"><div class="lbl">الربح الإجمالي الفعلي</div><div class="val num">${fmt(profit)}</div></div>
     <div class="stat warn"><div class="lbl">المصاريف</div><div class="val num">${fmt(expTotal)}</div></div>
-    <div class="stat good"><div class="lbl">الربح الصافي</div><div class="val num">${fmt(net)}</div></div>
+    <div class="stat good"><div class="lbl">الربح الصافي الفعلي</div><div class="val num">${fmt(net)}</div></div>
     <div class="stat"><div class="lbl">المبالغ المقبوضة</div><div class="val num">${fmt(cashIn)}</div></div>
-    <div class="stat"><div class="lbl">الكاش (مقبوض − مصاريف)</div><div class="val num">${fmt(cashBalance)}</div></div>
-    <div class="stat"><div class="lbl">رأس المال (ستوك)</div><div class="val num">${fmt(capital)}</div></div>
-    <div class="stat warn"><div class="lbl">فلوس عند الزبناء</div><div class="val num">${fmt(owed)}</div></div>`;
+    <div class="stat warn"><div class="lbl">مدفوع للموردين</div><div class="val num">${fmt(supOut)}</div></div>
+    <div class="stat"><div class="lbl">رأس مال مضاف / سحوبات</div><div class="val num">${fmt(cap.injections)} / ${fmt(cap.withdrawals)}</div></div>
+    <div class="stat good"><div class="lbl">رصيد الكاش (من البداية)</div><div class="val num">${fmt(cashBalance)}</div></div>
+    <div class="stat"><div class="lbl">رأس المال (ستوك)</div><div class="val num">${fmt(stockCap)}</div></div>
+    <div class="stat warn"><div class="lbl">ديون الزبناء</div><div class="val num">${fmt(owed)}</div></div>
+    <div class="stat warn"><div class="lbl">ديون الموردين</div><div class="val num">${fmt(owe)}</div></div>
+    <div class="stat"><div class="lbl">ربح متوقع — مماشي فعلي</div><div class="val num">${fmt(expectedProfitActive())}</div></div>`;
+  const capEl = document.getElementById("capitalList");
+  if(capEl) capEl.innerHTML = state.capitalMoves.slice(-5).reverse().map(m => `<div class="cart-line"><span class="ci-name">${m.date} — ${m.type === "injection" ? "➕ رأس مال" : "➖ سحب"}${m.note ? " • " + escapeHtml(m.note) : ""}</span><span class="ci-price">${fmt(m.amount)}</span></div>`).join("");
   const list = document.getElementById("expenseList");
   if(state.expenses.length === 0){ list.innerHTML = '<div class="empty-state">ماكاين حتى مصروف بعد</div>'; return; }
   const sorted = state.expenses.slice().sort((a,b) => b.date.localeCompare(a.date) || b.id - a.id);
@@ -3120,7 +3121,7 @@ function renderExpenses(){
     </div>` + g.items.map(e => `
     <div class="item-card">
       <div class="item-top">
-        <div><div class="item-name">${EXPENSE_CATS[e.category] || e.category}</div>${e.note ? `<div style="font-size:11.5px;color:var(--muted);">${escapeHtml(e.note)}</div>` : ""}</div>
+        <div><div class="item-name">${expenseCatName(e.category)}</div>${e.note ? `<div style="font-size:11.5px;color:var(--muted);">${escapeHtml(e.note)}</div>` : ""}</div>
         <div style="display:flex;align-items:center;gap:8px;"><b class="num">${fmt(e.amount)}</b><button class="icon-btn danger del-expense" data-id="${e.id}">✕</button></div>
       </div>
     </div>`).join("")).join("");
@@ -3135,7 +3136,7 @@ function renderExpenses(){
 }
 
 // ---------- VISITS & FOLLOW-UPS ----------
-const VISIT_OUTCOME = { purchased:"اشترى", no_purchase:"ما اشتراش", absent:"غايب / مسدود", followup:"محتاج متابعة" };
+const VISIT_OUTCOME = { purchased:"اشترى", no_purchase:"ما اشتراش", absent:"غايب / مسدود", followup:"محتاج متابعة", order:"خدا طلبية" };
 function populateVisitClientSelect(){
   const sel = document.getElementById("vClient");
   const cur = sel.value;
@@ -3156,7 +3157,10 @@ document.getElementById("saveVisitBtn").addEventListener("click", async () => {
   if(!c){ showToast("اختار زبون"); return; }
   // a new visit closes any earlier open follow-up for the same client
   state.visits.forEach(v => { if(v.clientId === clientId && v.nextVisit && !v.followDone) v.followDone = true; });
+  let vgps = "";
+  if(document.getElementById("vGps").checked){ try{ vgps = await getCurrentGps(); }catch(e){} }
   state.visits.push({
+    gps: vgps,
     id: state.nextId.visit++,
     date: new Date().toISOString(),
     clientId, clientName: c.name,
@@ -3192,7 +3196,7 @@ function renderVisits(){
   listEl.innerHTML = recent.length ? recent.map(v => `
     <div class="cart-line">
       <span class="ci-name">${escapeHtml(v.clientName)}<br><span style="font-size:11px;color:var(--muted);">${v.date.slice(0,16).replace('T',' — ')}${v.note ? ' • ' + escapeHtml(v.note) : ''}</span></span>
-      <span style="display:flex;align-items:center;gap:6px;"><span class="badge ${v.outcome==='purchased' ? 'clear' : 'owe'}">${VISIT_OUTCOME[v.outcome] || v.outcome}</span>
+      <span style="display:flex;align-items:center;gap:6px;"><span class="badge ${(v.outcome==='purchased'||v.outcome==='order') ? 'clear' : 'owe'}">${VISIT_OUTCOME[v.outcome] || v.outcome}</span>
       <button class="icon-btn danger del-visit" data-id="${v.id}">✕</button></span>
     </div>`).join("") : '<div class="empty-state" style="padding:14px;">ماكاين حتى زيارة بعد</div>';
   dueEl.querySelectorAll(".visit-done").forEach(btn => btn.addEventListener("click", async () => {
@@ -3232,7 +3236,7 @@ document.getElementById("exportStockCsv").addEventListener("click", () => {
 document.getElementById("exportExpensesCsv").addEventListener("click", () => {
   const m = computePeriodStats();
   const rows = [["Date","Category","Amount","Note"]];
-  m.exps.forEach(e => rows.push([e.date, EXPENSE_CATS[e.category] || e.category, e.amount, e.note||""]));
+  m.exps.forEach(e => rows.push([e.date, expenseCatName(e.category), e.amount, e.note||""]));
   downloadCsv("kontajiran-expenses-" + todayStr() + ".csv", rows);
 });
 document.getElementById("exportPdfBtn").addEventListener("click", () => {
@@ -3396,10 +3400,10 @@ document.getElementById("importFileInput").addEventListener("change", (e) => {
         return;
       }
       state = Object.assign({
-        products: [], clients: [], suppliers: [], invoices: [], orders: [], expenses: [], visits: [],
+        products: [], clients: [], suppliers: [], invoices: [], orders: [], expenses: [], visits: [], purchases: [], stockMovements: [], capitalMoves: [], expenseCats: [],
         sectors: ["تطوان", "مرتيل"],
         weeklyPlan: {0:"",1:"",2:"",3:"",4:"",5:"",6:""},
-        nextId: { product: 1, client: 1, supplier: 1, invoice: 1, order: 1, expense: 1, visit: 1 }
+        nextId: { product: 1, client: 1, supplier: 1, invoice: 1, order: 1, expense: 1, visit: 1, payment: 1, purchase: 1, move: 1, capital: 1 }
       }, parsed);
       if(!state.weeklyPlan) state.weeklyPlan = {0:"",1:"",2:"",3:"",4:"",5:"",6:""};
       await saveState();
@@ -3429,10 +3433,10 @@ document.getElementById("resetAllBtn").addEventListener("click", async () => {
       return;
     }
     state = {
-      products: [], clients: [], suppliers: [], invoices: [], orders: [], expenses: [], visits: [],
+      products: [], clients: [], suppliers: [], invoices: [], orders: [], expenses: [], visits: [], purchases: [], stockMovements: [], capitalMoves: [], expenseCats: [],
       sectors: ["تطوان", "مرتيل"],
       weeklyPlan: {0:"",1:"",2:"",3:"",4:"",5:"",6:""},
-      nextId: { product: 1, client: 1, supplier: 1, invoice: 1, order: 1, expense: 1, visit: 1 }
+      nextId: { product: 1, client: 1, supplier: 1, invoice: 1, order: 1, expense: 1, visit: 1, payment: 1, purchase: 1, move: 1, capital: 1 }
     };
     cart = [];
     await saveState();
@@ -3573,6 +3577,9 @@ function showLegacyRecoveryModal(legacy, info){
     if(!Array.isArray(state.orders)) state.orders = [];
     if(!Array.isArray(state.expenses)) state.expenses = [];
     if(!Array.isArray(state.visits)) state.visits = [];
+    ["purchases","stockMovements","capitalMoves","expenseCats"].forEach(k => { if(!Array.isArray(state[k])) state[k] = []; });
+    state.nextId = Object.assign({ payment:1, purchase:1, move:1, capital:1 }, state.nextId);
+    migrateOrders();
     if(!state.weeklyPlan || typeof state.weeklyPlan !== "object") state.weeklyPlan = {0:"",1:"",2:"",3:"",4:"",5:"",6:""};
     for(let i=0;i<7;i++){ if(state.weeklyPlan[i] === undefined) state.weeklyPlan[i] = ""; }
     await saveState();
@@ -3582,6 +3589,1083 @@ function showLegacyRecoveryModal(legacy, info){
   });
   document.getElementById("legacyKeepBtn").addEventListener("click", closeModal);
 }
+
+// ================= ORDERS / PURCHASES / DELIVERIES — CORE LOGIC =================
+const ORDER_STATUS = {
+  new:"جديدة", waiting_confirmation:"تنتظر التأكيد", waiting_supply:"تنتظر التموين", purchased:"تشرات",
+  preparing:"قيد التحضير", ready:"جاهزة للتوصيل", out_for_delivery:"خرجات للتوصيل",
+  delivered:"تسلّمات بنجاح", failed:"فشل التوصيل", cancelled:"ملغية"
+};
+const ACTIVE_ORDER = ["new","waiting_confirmation","waiting_supply","purchased","preparing","ready","out_for_delivery"];
+const FINAL_ORDER = ["delivered","failed","cancelled"];
+function pad(n, w){ return String(n).padStart(w || 4, "0"); }
+function isActiveOrder(o){ return ACTIVE_ORDER.indexOf(o.status) !== -1; }
+
+function logMove(productId, qty, type, ref, note){
+  const p = state.products.find(x => x.id === productId);
+  state.stockMovements.push({ id: state.nextId.move++, date: new Date().toISOString(), productId, productName: p ? p.name : "", qty: fmtNum(qty), type, ref: ref || "", note: note || "" });
+}
+function migrateOrders(){
+  state.orders.forEach(o => {
+    if(Array.isArray(o.items)){ o.payments = o.payments || []; o.history = o.history || []; o.discount = o.discount || 0; return; }
+    const st = o.status === "pending" ? "new" : (o.status === "done" ? "delivered" : (ORDER_STATUS[o.status] ? o.status : "new"));
+    o.items = [{ productId: null, name: o.productName || "", qty: o.qty || 1, price: o.price || 0, expectedCost: 0, reserved: 0, costParts: [], gift: false }];
+    o.number = o.number || ("CMD-" + pad(o.id));
+    o.status = st; o.legacy = true; o.payments = []; o.history = []; o.discount = 0;
+    o.deliveryDate = o.deliveryDate || ""; o.notes = o.notes || o.note || "";
+  });
+}
+// ----- stock availability: reservations are computed from active orders (never stored on products) -----
+function reservedFor(productId, exceptOrderId){
+  let r = 0;
+  state.orders.forEach(o => {
+    if(!isActiveOrder(o) || o.id === exceptOrderId) return;
+    o.items.forEach(it => { if(it.productId === productId) r += (it.reserved || 0); });
+  });
+  return fmtNum(r);
+}
+function availableQty(p, exceptOrderId){ return Math.max(0, fmtNum(p.qty - reservedFor(p.id, exceptOrderId))); }
+function itemNeeds(it){ return Math.max(0, fmtNum(it.qty - (it.reserved || 0))); }
+function orderNeeds(o){ return fmtNum(o.items.reduce((s, it) => s + itemNeeds(it), 0)); }
+function itemCogs(it){
+  const parts = (it.costParts || []).reduce((s, c) => s + c.qty * c.cost, 0);
+  const missing = Math.max(0, it.qty - (it.reserved || 0));
+  return fmtNum(parts + missing * (it.expectedCost || 0));
+}
+function orderStats(o){
+  if(o.status === "delivered" && o.final){
+    const paidD = fmtNum((o.payments || []).reduce((s, p) => s + p.amount, 0));
+    return { subtotal: o.final.subtotal, discount: o.final.discount, total: o.final.total, expectedCost: o.final.cogs, expectedProfit: o.final.profit, actualCost: o.final.cogs, actualProfit: o.final.profit, paid: paidD, remaining: fmtNum(o.final.total - paidD) };
+  }
+  const subtotal = fmtNum(o.items.filter(i => !i.gift).reduce((s, i) => s + i.price * i.qty, 0));
+  const discount = fmtNum(Math.min(o.discount || 0, subtotal));
+  const total = fmtNum(subtotal - discount);
+  const expectedCost = fmtNum(o.items.reduce((s, i) => s + (i.expectedCost || 0) * i.qty, 0));
+  const paid = fmtNum((o.payments || []).reduce((s, p) => s + p.amount, 0));
+  const actualCost = fmtNum(o.items.reduce((s, i) => s + itemCogs(i), 0));
+  return { subtotal, discount, total, expectedCost, expectedProfit: fmtNum(total - expectedCost), actualCost, actualProfit: fmtNum(total - actualCost), paid, remaining: fmtNum(total - paid) };
+}
+function addHistory(o, text){ o.history = o.history || []; o.history.push({ date: new Date().toISOString(), status: o.status, text }); }
+function trimParts(parts, newQty){
+  let total = parts.reduce((s, c) => s + c.qty, 0);
+  while(total > newQty + 1e-9 && parts.length){
+    const last = parts[parts.length - 1];
+    const cut = Math.min(last.qty, total - newQty);
+    last.qty = fmtNum(last.qty - cut); total = fmtNum(total - cut);
+    if(last.qty <= 1e-9) parts.pop();
+  }
+  return parts;
+}
+function reserveFromStock(o){
+  o.items.forEach(it => {
+    const need = itemNeeds(it);
+    if(need <= 0 || !it.productId) return;
+    const p = state.products.find(x => x.id === it.productId);
+    if(!p) return;
+    const take = Math.min(need, availableQty(p));
+    if(take > 0){
+      it.reserved = fmtNum((it.reserved || 0) + take);
+      it.costParts = it.costParts || [];
+      it.costParts.push({ qty: fmtNum(take), cost: fmtNum(p.buyPrice || 0), src: "stock" });
+    }
+  });
+}
+function syncSupplyStatus(o){
+  if(!isActiveOrder(o)) return;
+  const needs = orderNeeds(o);
+  if(needs > 0 && ["new","purchased","preparing","ready","out_for_delivery"].indexOf(o.status) !== -1){ o.status = "waiting_supply"; }
+  else if(needs === 0 && o.status === "waiting_supply"){ o.status = "new"; }
+}
+function rebalanceReservations(){
+  state.orders.filter(o => o.status === "waiting_supply").sort((a, b) => a.date.localeCompare(b.date)).forEach(o => {
+    reserveFromStock(o); syncSupplyStatus(o);
+  });
+}
+function buildOrderItems(rawItems){
+  if(!rawItems || !rawItems.length) throw new Error("زيد سلعة وحدة على الأقل");
+  return rawItems.map(it => {
+    const p = state.products.find(x => x.id === it.productId);
+    if(!p) throw new Error("اختار سلعة من الكاطالوغ");
+    const qty = parseFloat(it.qty);
+    if(!(qty > 0)) throw new Error("الكمية غالطة ل " + p.name);
+    const price = it.gift ? 0 : parseFloat(it.price);
+    if(!it.gift && !(price >= 0)) throw new Error("الثمن غالط ل " + p.name);
+    const cost = parseFloat(it.expectedCost);
+    return { productId: p.id, name: p.name, qty: fmtNum(qty), price: fmtNum(price || 0), expectedCost: fmtNum(isNaN(cost) ? (p.buyPrice || 0) : cost), reserved: 0, costParts: [], gift: !!it.gift };
+  });
+}
+function placeOrder(d){
+  const client = state.clients.find(x => x.id === d.clientId);
+  if(!client) throw new Error("اختار الزبون");
+  const items = buildOrderItems(d.items);
+  const id = state.nextId.order++;
+  const o = { id, number: "CMD-" + pad(id), date: new Date().toISOString(), clientId: client.id, clientName: client.name, items,
+    discount: fmtNum(d.discount || 0), status: "new", deliveryDate: d.deliveryDate || "", deliveryTime: d.deliveryTime || "", notes: d.notes || "", payments: [], history: [] };
+  state.orders.push(o);
+  reserveFromStock(o);
+  o.status = orderNeeds(o) > 0 ? "waiting_supply" : "new";
+  addHistory(o, "تسجلات الطلبية");
+  if(d.advance > 0) addPayment(o, d.advance, d.method || "cash", "دفعة مقدمة", { force: true });
+  return o;
+}
+function updateOrder(o, d){
+  if(!isActiveOrder(o)) throw new Error("الطلبية سالات، ماتتعدلش");
+  const client = state.clients.find(x => x.id === d.clientId);
+  if(!client) throw new Error("اختار الزبون");
+  const newItems = buildOrderItems(d.items);
+  const old = o.items.slice();
+  newItems.forEach(ni => {
+    const idx = old.findIndex(x => x.productId === ni.productId);
+    if(idx !== -1){
+      const oi = old.splice(idx, 1)[0];
+      ni.costParts = trimParts((oi.costParts || []).map(c => Object.assign({}, c)), ni.qty);
+      ni.reserved = fmtNum(ni.costParts.reduce((s, c) => s + c.qty, 0));
+    }
+  });
+  o.items = newItems; o.clientId = client.id; o.clientName = client.name; o.discount = fmtNum(d.discount || 0);
+  o.deliveryDate = d.deliveryDate || ""; o.deliveryTime = d.deliveryTime || ""; o.notes = d.notes || "";
+  reserveFromStock(o); syncSupplyStatus(o);
+  rebalanceReservations();
+  addHistory(o, "تعدلات الطلبية");
+  return o;
+}
+function setOrderStatus(o, st){
+  if(!isActiveOrder(o)) throw new Error("الطلبية سالات");
+  if(FINAL_ORDER.indexOf(st) !== -1) throw new Error("استعمل الأزرار ديال التسليم/الفشل/الإلغاء");
+  const needs = orderNeeds(o);
+  if(["purchased","preparing","ready","out_for_delivery"].indexOf(st) !== -1 && needs > 0) throw new Error("الستوك ناقص: خاص الشراء/التموين أولا");
+  if(st === "waiting_supply" && needs === 0) throw new Error("كلشي متوفر، ماكاين حتى تموين");
+  o.status = st; addHistory(o, "الحالة: " + ORDER_STATUS[st]);
+}
+function addPayment(o, amount, method, note, opts){
+  opts = opts || {};
+  amount = fmtNum(amount);
+  if(!(amount > 0)) throw new Error("دخل مبلغ صحيح");
+  if(o.status === "cancelled" || o.status === "failed") throw new Error("الطلبية ملغية/فاشلة، ماتقبلش دفعات");
+  const st = orderStats(o);
+  if(amount > st.remaining + 0.005 && !opts.force){ const e = new Error("المبلغ كثر من الباقي"); e.code = "overpay"; throw e; }
+  const last = (o.payments || [])[(o.payments || []).length - 1];
+  if(last && last.amount === amount && Date.now() - new Date(last.date).getTime() < 8000 && !opts.force){ const e = new Error("نفس الدفعة تسجلات توا"); e.code = "dup"; throw e; }
+  const pay = { id: state.nextId.payment++, date: new Date().toISOString(), amount, method: method || "cash", note: note || "", afterDelivery: o.status === "delivered" };
+  o.payments.push(pay);
+  if(o.status === "delivered" && o.clientId){
+    const c = state.clients.find(x => x.id === o.clientId);
+    if(c){
+      c.credit = fmtNum(Math.max(0, c.credit - amount));
+      c.ledger = c.ledger || [];
+      c.ledger.push({ date: pay.date, desc: "تسديد", amount, type: "payment", orderPayment: true, orderId: o.id, ref: o.number });
+    }
+  }
+  addHistory(o, "دفعة " + amount + " (" + (method || "cash") + ")");
+  return pay;
+}
+function deliverOrder(o){
+  if(!isActiveOrder(o)) throw new Error("هاد الطلبية ماقابلاش للتسليم");
+  if(o.items.some(i => !i.productId)) throw new Error("طلبية قديمة: عدّلها واختار السلع من الكاطالوغ أولا");
+  if(orderNeeds(o) > 0) throw new Error("الستوك ناقص، ماتقدرش تسلّم قبل التموين");
+  o.items.forEach(it => {
+    const p = state.products.find(x => x.id === it.productId);
+    if(!p || p.qty < it.qty - 1e-9) throw new Error("الستوك الفعلي ماكافيش ل " + it.name);
+  });
+  const st = orderStats(o);
+  const cogs = fmtNum(o.items.reduce((s, i) => s + itemCogs(i), 0));
+  const paid = Math.min(st.paid, st.total);
+  const creditAdded = fmtNum(Math.max(0, st.total - paid));
+  const client = state.clients.find(x => x.id === o.clientId);
+  if(!client && creditAdded > 0) throw new Error("الزبون ضروري باش يتسجل الدين");
+  const invId = state.nextId.invoice++;
+  const invoice = {
+    id: invId, date: new Date().toISOString(), clientId: o.clientId, clientName: o.clientName,
+    items: o.items.map(it => ({ productId: it.productId, name: it.name, qty: it.qty, unitPrice: it.gift ? 0 : it.price, unitCost: fmtNum(itemCogs(it) / it.qty), gift: it.gift })),
+    subtotal: st.subtotal, giftsValue: 0, discountAmount: st.discount, total: st.total, paid, creditAdded,
+    profit: fmtNum(st.total - cogs), orderId: o.id, orderNumber: o.number
+  };
+  state.invoices.push(invoice);
+  o.items.forEach(it => {
+    const p = state.products.find(x => x.id === it.productId);
+    p.qty = fmtNum(p.qty - it.qty);
+    logMove(p.id, -it.qty, "order_delivery", o.number, it.name);
+  });
+  if(creditAdded > 0 && client){
+    client.credit = fmtNum(client.credit + creditAdded);
+    client.ledger = client.ledger || [];
+    client.ledger.push({ date: invoice.date, desc: "فاتورة #" + invId + " (طلبية " + o.number + ")", amount: creditAdded, type: "debt" });
+  }
+  o.status = "delivered"; o.invoiceId = invId; o.deliveredAt = invoice.date;
+  o.final = { subtotal: st.subtotal, discount: st.discount, total: st.total, cogs, profit: invoice.profit };
+  addHistory(o, "تسلّمات — فاتورة #" + invId);
+  return invoice;
+}
+function cancelOrder(o, reason){
+  if(o.status === "delivered") throw new Error("الطلبية تسلّمات، ماتتلغاش");
+  if(!isActiveOrder(o)) throw new Error("الطلبية ديجا سالات");
+  o.status = "cancelled"; o.cancelReason = reason || "";
+  addHistory(o, "تلغات: " + (reason || ""));
+  rebalanceReservations();
+}
+function failOrder(o, reason){
+  if(!isActiveOrder(o)) throw new Error("الطلبية سالات");
+  if(!reason) throw new Error("خاصك تكتب سبب الفشل");
+  o.status = "failed"; o.failReason = reason;
+  addHistory(o, "فشل التوصيل: " + reason);
+  rebalanceReservations();
+}
+function createPurchase(d){
+  const sup = state.suppliers.find(x => x.id === d.supplierId);
+  if(!sup) throw new Error("اختار المورد");
+  const lines = (d.items || []).filter(i => i.productId).map(i => ({ p: state.products.find(x => x.id === i.productId), qty: parseFloat(i.qty), cost: parseFloat(i.cost) }));
+  if(!lines.length) throw new Error("زيد سلعة وحدة على الأقل");
+  lines.forEach(l => { if(!l.p) throw new Error("سلعة غير موجودة"); if(!(l.qty > 0)) throw new Error("الكمية غالطة ل " + l.p.name); if(!(l.cost >= 0)) throw new Error("ثمن الشراء غالط ل " + l.p.name); });
+  const sub = lines.reduce((s, l) => s + l.qty * l.cost, 0);
+  const discount = fmtNum(d.discount || 0), transport = fmtNum(d.transport || 0);
+  if(discount > sub + 0.005) throw new Error("الخصم كثر من المجموع");
+  const total = fmtNum(sub - discount + transport);
+  const factor = sub > 0 ? total / sub : 1;
+  const order = d.orderId ? state.orders.find(x => x.id === d.orderId) : null;
+  if(d.orderId && (!order || !isActiveOrder(order))) throw new Error("الطلبية المرتبطة ماعادتش جارية");
+  const id = state.nextId.purchase++;
+  const number = "ACH-" + pad(id);
+  const items = lines.map(l => {
+    const landed = fmtNum(l.cost * factor);
+    l.p.qty = fmtNum(l.p.qty + l.qty);
+    l.p.buyPrice = landed;
+    logMove(l.p.id, l.qty, "purchase", number, sup.name);
+    if(order){
+      const it = order.items.find(i => i.productId === l.p.id && itemNeeds(i) > 0);
+      if(it){
+        const a = Math.min(itemNeeds(it), l.qty);
+        it.reserved = fmtNum((it.reserved || 0) + a);
+        it.costParts = it.costParts || [];
+        it.costParts.push({ qty: fmtNum(a), cost: landed, src: "purchase", ref: number });
+      }
+    }
+    return { productId: l.p.id, name: l.p.name, qty: fmtNum(l.qty), cost: fmtNum(l.cost), landedCost: landed };
+  });
+  const paid = Math.min(fmtNum(d.paid || 0), total);
+  const purchase = { id, number, date: new Date().toISOString(), supplierId: sup.id, supplierName: sup.name, items, discount, transport, total, paid, orderId: order ? order.id : null, orderNumber: order ? order.number : "", notes: d.notes || "" };
+  state.purchases.push(purchase);
+  sup.ledger = sup.ledger || [];
+  if(paid > 0) sup.ledger.push({ date: purchase.date, desc: "دفعة فاتورة شراء " + number, amount: paid, type: "payment_purchase" });
+  if(total - paid > 0.005){
+    sup.debt = fmtNum(sup.debt + (total - paid));
+    sup.ledger.push({ date: purchase.date, desc: "فاتورة شراء " + number, amount: fmtNum(total - paid), type: "debt" });
+  }
+  if(order){
+    if(orderNeeds(order) === 0 && order.status === "waiting_supply") order.status = "purchased";
+    addHistory(order, "شراء " + number);
+  }
+  return purchase;
+}
+// ----- transactions: snapshot what an action touches so a failed save never leaves a half-applied state -----
+function beginTxn(refs, arrayNames){
+  const snap = refs.map(o => JSON.parse(JSON.stringify(o)));
+  const lens = {}; (arrayNames || []).forEach(n => { lens[n] = state[n].length; });
+  const nid = Object.assign({}, state.nextId);
+  return { rollback(){
+    refs.forEach((o, i) => { Object.keys(o).forEach(k => delete o[k]); Object.assign(o, snap[i]); });
+    Object.keys(lens).forEach(n => { state[n].length = lens[n]; });
+    state.nextId = nid;
+  } };
+}
+let txnBusy = false;
+async function runTxn(refs, arrays, work){
+  if(txnBusy) return { ok: false, busy: true };
+  txnBusy = true;
+  const t = beginTxn(refs, arrays);
+  try{
+    const result = work();
+    const ok = await saveState();
+    if(!ok){ t.rollback(); showStorageFullModal(); return { ok: false }; }
+    return { ok: true, result };
+  }catch(e){
+    t.rollback();
+    return { ok: false, error: e };
+  } finally { txnBusy = false; }
+}
+function activeOrderRefs(extra){ return state.orders.filter(isActiveOrder).concat(extra || []); }
+const TXN_ARRAYS = ["orders","invoices","purchases","stockMovements"];
+// ----- money in/out helpers (single source for cash figures) -----
+function dayKeyOf(iso){ return localDayKey(iso); }
+function inKeyRange(iso, startKey, endKey){
+  const k = dayKeyOf(iso);
+  return (!startKey || k >= startKey) && (!endKey || k <= endKey);
+}
+function cashReceivedBetween(startKey, endKey){
+  let t = 0;
+  state.invoices.forEach(i => { if(!i.orderId && inKeyRange(i.date, startKey, endKey)) t += i.paid || 0; });
+  state.clients.forEach(c => (c.ledger || []).forEach(l => { if(l.type === "payment" && l.desc === "تسديد" && !l.orderPayment && inKeyRange(l.date, startKey, endKey)) t += l.amount; }));
+  state.orders.forEach(o => (o.payments || []).forEach(p => { if(inKeyRange(p.date, startKey, endKey)) t += p.amount; }));
+  return fmtNum(t);
+}
+function supplierCashOutBetween(startKey, endKey){
+  let t = 0;
+  state.suppliers.forEach(s => (s.ledger || []).forEach(l => { if((l.type === "payment" || l.type === "payment_purchase") && inKeyRange(l.date, startKey, endKey)) t += l.amount; }));
+  return fmtNum(t);
+}
+function expensesBetween(startKey, endKey){
+  return fmtNum(state.expenses.filter(e => (!startKey || e.date >= startKey) && (!endKey || e.date <= endKey)).reduce((s, e) => s + e.amount, 0));
+}
+function capitalBetween(startKey, endKey){
+  let inj = 0, wd = 0;
+  state.capitalMoves.forEach(m => { if((!startKey || m.date >= startKey) && (!endKey || m.date <= endKey)){ if(m.type === "injection") inj += m.amount; else wd += m.amount; } });
+  return { injections: fmtNum(inj), withdrawals: fmtNum(wd) };
+}
+function expectedProfitActive(){
+  return fmtNum(state.orders.filter(isActiveOrder).reduce((s, o) => s + orderStats(o).expectedProfit, 0));
+}
+const BASE_EXPENSE_CATS = { fuel:"وقود (كازوال)", maintenance:"صيانة السيارة", transport:"نقل", phone:"هاتف وأنترنت", supplies:"لوازم العمل", rent:"كراء", salary:"أجرة", other:"أخرى" };
+function allExpenseCats(){
+  const m = Object.assign({}, BASE_EXPENSE_CATS);
+  state.expenseCats.forEach(c => { m[c.key] = c.name; });
+  return m;
+}
+function expenseCatName(k){ return allExpenseCats()[k] || k; }
+
+// ================= ORDERS / DELIVERIES / PURCHASES — UI =================
+const PAY_METHODS = { cash:"نقدا", transfer:"تحويل", cheque:"شيك", other:"أخرى" };
+function orderBadgeClass(st){ if(st === "delivered") return "tag-ok"; if(st === "failed" || st === "cancelled" || st === "waiting_supply") return "tag-warn"; return "tag-gold"; }
+function clientOf(o){ return state.clients.find(c => c.id === o.clientId) || {}; }
+function dateShort(iso){ return String(iso || "").slice(0,16).replace("T"," — "); }
+function failMsg(r, fallback){ return (r && r.error && r.error.message) ? r.error.message : (fallback || "ماتسجلاتش"); }
+function refreshAll(){ renderOrders(); renderDeliveries(); renderDashboard(); renderProducts(); renderClients(); }
+
+// ---------- orders list ----------
+let orderFilter = "active";
+function orderCardHtml(o){
+  const st = o.status, s = orderStats(o), needs = orderNeeds(o), c = clientOf(o);
+  const final = FINAL_ORDER.indexOf(st) !== -1;
+  const items = o.items.map(it => {
+    const tag = (!final && it.productId) ? (itemNeeds(it) > 0 ? ` <span class="item-tag tag-warn">محجوز ${it.reserved||0} / ناقص ${itemNeeds(it)}</span>` : ` <span class="item-tag tag-ok">محجوز كامل</span>`) : "";
+    return `<div class="lrow"><span>${it.gift ? "🎁 " : ""}${escapeHtml(it.name)} × ${it.qty}${tag}</span><b>${it.gift ? "0" : fmtNum(it.price * it.qty)} د.م</b></div>`;
+  }).join("");
+  const profitLine = st === "delivered"
+    ? `<span>الربح الفعلي: <b>${fmt(s.actualProfit)}</b></span>`
+    : (st === "cancelled" || st === "failed" ? "" : `<span>الربح المتوقع: <b>${fmt(s.expectedProfit)}</b> <span class="item-tag tag-gold">متوقع</span></span>`);
+  const dueLine = (st !== "cancelled" && st !== "failed") ? `<span>باقي: <b>${fmt(s.remaining)}</b></span>` : "";
+  const statusSel = isActiveOrder(o) ? `<select class="ord-status-sel" data-id="${o.id}" style="margin-top:8px;">${ACTIVE_ORDER.map(k => `<option value="${k}" ${k === st ? "selected" : ""}>${ORDER_STATUS[k]}</option>`).join("")}</select>` : "";
+  const btn = (act, label, cls) => `<button class="btn ${cls || "btn-outline"} btn-sm" data-act="${act}" data-id="${o.id}">${label}</button>`;
+  const btns = [];
+  if(isActiveOrder(o)){
+    btns.push(btn("edit", "✎ تعديل"));
+    btns.push(btn("pay", "💵 دفعة", "btn-gold"));
+    if(needs > 0) btns.push(btn("buy", "🛒 شراء/تموين", "btn-gold"));
+    if(needs === 0) btns.push(btn("deliver", "✅ تسليم", "btn-gold"));
+    btns.push(btn("fail", "🚫 فشل"));
+    btns.push(btn("cancel", "✕ إلغاء", "btn-danger"));
+  } else if(st === "delivered"){
+    if(s.remaining > 0.005) btns.push(btn("pay", "💵 دفعة", "btn-gold"));
+    btns.push(btn("invoice", "🧾 الفاتورة"));
+  }
+  btns.push(btn("print", "📄 طلبية")); btns.push(btn("note", "📦 وصل تسليم")); btns.push(btn("wa", "💬")); btns.push(btn("dup", "⧉ نسخ")); btns.push(btn("detail", "🧾 تفاصيل"));
+  const pays = (o.payments || []).map(p => `<div class="lrow"><span>${dateShort(p.date)} — ${PAY_METHODS[p.method] || p.method}${p.note ? " • " + escapeHtml(p.note) : ""}</span><b>${fmt(p.amount)}</b></div>`).join("") || '<div class="lrow">ماكاين حتى دفعة</div>';
+  const hist = (o.history || []).slice().reverse().map(h => `<div class="lrow"><span>${dateShort(h.date)}</span><span>${escapeHtml(h.text)}</span></div>`).join("");
+  return `<div class="item-card">
+    <div class="item-top"><div>
+      <div class="item-name">${o.number} — ${escapeHtml(o.clientName)}</div>
+      <div style="font-size:11px;color:var(--muted);">${dateShort(o.date)}${o.deliveryDate ? " • تسليم: " + o.deliveryDate + (o.deliveryTime ? " " + o.deliveryTime : "") : ""}</div>
+      ${c.city || c.district ? `<div style="font-size:11px;color:var(--muted);">${escapeHtml([c.city, c.district].filter(Boolean).join(" • "))}</div>` : ""}
+    </div><span class="item-tag ${orderBadgeClass(st)}">${ORDER_STATUS[st]}</span></div>
+    <div class="ledger-mini open" style="display:block;">${items}${o.discount ? `<div class="lrow"><span>خصم</span><b>-${fmt(s.discount)}</b></div>` : ""}</div>
+    <div class="item-meta"><span>المجموع: <b>${fmt(s.total)}</b></span><span>مدفوع: <b>${fmt(s.paid)}</b></span>${dueLine}${profitLine}</div>
+    ${st === "delivered" && s.remaining <= 0.005 ? '<div class="item-tag tag-ok">تسلّمات وخالصة</div>' : (st === "delivered" ? '<div class="item-tag tag-warn">تسلّمات ولكن باقي ما تخلصش</div>' : "")}
+    ${o.failReason ? `<div style="font-size:11.5px;color:var(--danger);">سبب الفشل: ${escapeHtml(o.failReason)}</div>` : ""}
+    ${o.cancelReason ? `<div style="font-size:11.5px;color:var(--danger);">سبب الإلغاء: ${escapeHtml(o.cancelReason)}</div>` : ""}
+    ${o.legacy ? '<div style="font-size:11px;color:var(--muted);">⚠️ طلبية قديمة (قبل النظام الجديد): عدّلها واختار السلع من الكاطالوغ.</div>' : ""}
+    ${statusSel}
+    <div class="btn-row" style="margin-top:8px;flex-wrap:wrap;gap:6px;">${btns.join("")}</div>
+    <div class="ledger-mini" id="ord-det-${o.id}"><div class="lrow"><b>الدفعات</b><span></span></div>${pays}<div class="lrow"><b>السجل</b><span></span></div>${hist}${o.notes ? `<div class="lrow"><span>ملاحظة: ${escapeHtml(o.notes)}</span></div>` : ""}</div>
+  </div>`;
+}
+function renderOrders(){
+  const chipsEl = document.getElementById("orderStatusChips");
+  const counts = {};
+  state.orders.forEach(o => { counts[o.status] = (counts[o.status] || 0) + 1; });
+  const defs = [["active", "جارية (" + state.orders.filter(isActiveOrder).length + ")"], ["all", "الكل (" + state.orders.length + ")"]]
+    .concat(Object.keys(ORDER_STATUS).map(k => [k, ORDER_STATUS[k] + " (" + (counts[k] || 0) + ")"]));
+  chipsEl.innerHTML = defs.map(d => `<span class="chip ${orderFilter === d[0] ? "active" : ""}" data-of="${d[0]}">${d[1]}</span>`).join("");
+  chipsEl.querySelectorAll(".chip").forEach(ch => ch.addEventListener("click", () => { orderFilter = ch.dataset.of; renderOrders(); }));
+  const q = (document.getElementById("orderSearch").value || "").trim().toLowerCase();
+  let list = state.orders.slice().reverse();
+  if(orderFilter === "active") list = list.filter(isActiveOrder);
+  else if(orderFilter !== "all") list = list.filter(o => o.status === orderFilter);
+  if(q) list = list.filter(o => (o.number + " " + o.clientName + " " + o.items.map(i => i.name).join(" ")).toLowerCase().includes(q));
+  const delivered = state.orders.filter(o => o.status === "delivered" && o.final);
+  document.getElementById("orderSummary").innerHTML = `<div class="barcode-panel" style="font-size:12px;">
+    <div>ربح متوقع (طلبيات جارية): <b>${fmt(expectedProfitActive())}</b> — <span style="opacity:.8">ماشي ربح فعلي</span></div>
+    <div>ربح فعلي (طلبيات مسلّمة): <b>${fmt(fmtNum(delivered.reduce((s, o) => s + o.final.profit, 0)))}</b></div></div>`;
+  const el = document.getElementById("orderList");
+  el.innerHTML = list.length ? list.map(orderCardHtml).join("") : '<div class="empty-state">ماكاين حتى طلبية فهاد الفلتر</div>';
+}
+document.getElementById("orderSearch").addEventListener("input", renderOrders);
+document.getElementById("newOrderBtn").addEventListener("click", () => openOrderModal(null));
+const orderListEl = document.getElementById("orderList");
+orderListEl.addEventListener("click", (e) => {
+  const b = e.target.closest ? e.target.closest("[data-act]") : null;
+  if(!b) return;
+  const o = state.orders.find(x => x.id === parseInt(b.dataset.id));
+  if(!o) return;
+  const act = b.dataset.act;
+  if(act === "edit") openOrderModal(o);
+  else if(act === "pay") openPaymentModal(o);
+  else if(act === "buy") openPurchaseModal({ orderId: o.id });
+  else if(act === "deliver") openDeliverModal(o);
+  else if(act === "fail") failFlow(o);
+  else if(act === "cancel") cancelFlow(o);
+  else if(act === "dup") duplicateOrder(o);
+  else if(act === "print") printOrderDoc(o, "order");
+  else if(act === "note") printOrderDoc(o, "delivery");
+  else if(act === "wa") shareOrderWhatsapp(o);
+  else if(act === "invoice"){ const inv = state.invoices.find(i => i.id === o.invoiceId); if(inv) printInvoice(inv); }
+  else if(act === "detail"){ const d = document.getElementById("ord-det-" + o.id); if(d) d.classList.toggle("open"); }
+});
+orderListEl.addEventListener("change", async (e) => {
+  if(!(e.target.classList && e.target.classList.contains("ord-status-sel"))) return;
+  const o = state.orders.find(x => x.id === parseInt(e.target.dataset.id));
+  if(!o) return;
+  const r = await runTxn([o], [], () => setOrderStatus(o, e.target.value));
+  if(!r.ok && !r.busy) showToast(failMsg(r));
+  refreshAll();
+});
+
+// ---------- order create / edit modal ----------
+function openOrderModal(order, prefill){
+  prefill = prefill || {};
+  if(state.clients.length === 0){ showToast("زيد زبون أولا من صفحة الزبناء"); return; }
+  if(state.products.filter(p => p.active !== false).length === 0){ showToast("زيد سلعة أولا"); return; }
+  const editing = !!order, excl = editing ? order.id : null;
+  let rows = editing ? order.items.map(i => ({ productId: i.productId, qty: i.qty, price: i.price, cost: i.expectedCost, gift: i.gift })) : [];
+  if(!editing && prefill.productId){
+    const p = state.products.find(x => x.id === prefill.productId);
+    if(p) rows.push({ productId: p.id, qty: prefill.qty || 1, price: p.promoPrice || p.sellPrice, cost: p.buyPrice, gift: false });
+  }
+  if(!rows.length) rows.push({ productId: null, qty: 1, price: 0, cost: 0, gift: false });
+  const clientId = editing ? order.clientId : (prefill.clientId || "");
+  openModal(`
+    <h3>${editing ? "✎ تعديل " + order.number : "📋 طلبية جديدة"}</h3>
+    <label>الزبون</label>
+    <select id="ordClient"><option value="">— اختار الزبون —</option>${state.clients.map(c => `<option value="${c.id}" ${c.id === clientId ? "selected" : ""}>${escapeHtml(c.name)}${c.shopName ? " — " + escapeHtml(c.shopName) : ""}</option>`).join("")}</select>
+    <label style="margin-top:10px;">السلع (من الكاطالوغ — حتى اللي ستوكها 0)</label>
+    <div id="ordRows"></div>
+    <button class="btn btn-outline btn-sm" id="ordAddRow" type="button">+ زيد سلعة</button>
+    <div class="field-row" style="margin-top:10px;"><div><label>خصم (مبلغ)</label><input type="number" id="ordDiscount" value="${editing ? (order.discount || 0) : 0}"></div><div><label>تاريخ التسليم</label><input type="date" id="ordDate" value="${editing ? (order.deliveryDate || "") : ""}"></div></div>
+    <label>ساعة التسليم</label><input type="time" id="ordTime" value="${editing ? (order.deliveryTime || "") : ""}">
+    <label>ملاحظات</label><input type="text" id="ordNotes" value="${editing ? escapeHtml(order.notes || "") : ""}">
+    ${editing ? "" : `<div class="field-row"><div><label>دفعة مقدمة (اختياري)</label><input type="number" id="ordAdvance" placeholder="0"></div><div><label>طريقة الأداء</label><select id="ordMethod">${Object.keys(PAY_METHODS).map(k => `<option value="${k}">${PAY_METHODS[k]}</option>`).join("")}</select></div></div>`}
+    <div class="barcode-panel" id="ordSummary" style="margin-top:10px;font-size:12.5px;"></div>
+    <button class="btn btn-gold btn-full" id="ordSaveBtn">${editing ? "💾 حفظ التعديل" : "💾 سجل الطلبية"}</button>
+    <button class="modal-close" id="ordCloseBtn">إغلاق</button>`);
+  const $ = id => document.getElementById(id);
+  const optionsHtml = sel => state.products.filter(p => p.active !== false || p.id === sel).map(p => `<option value="${p.id}" ${p.id === sel ? "selected" : ""}>${escapeHtml(p.name)} — متاح ${availableQty(p, excl)}</option>`).join("");
+  function note(i){
+    const r = rows[i], el = $("ordNote_" + i); if(!el) return;
+    const p = state.products.find(x => x.id === r.productId);
+    if(!p){ el.textContent = ""; return; }
+    const av = availableQty(p, excl), q = parseFloat(r.qty) || 0, take = Math.min(av, q), miss = fmtNum(q - take);
+    el.textContent = miss > 0 ? `غيتحجز ${take} من الستوك، ناقص ${miss} (الطلبية غادي تدخل "تنتظر التموين")` : `الستوك كافي: غيتحجز ${take}`;
+  }
+  function summary(){
+    const sub = rows.filter(r => !r.gift).reduce((s, r) => s + (parseFloat(r.price) || 0) * (parseFloat(r.qty) || 0), 0);
+    const disc = Math.min(parseFloat($("ordDiscount").value) || 0, sub);
+    const total = fmtNum(sub - disc);
+    const cost = rows.reduce((s, r) => s + (parseFloat(r.cost) || 0) * (parseFloat(r.qty) || 0), 0);
+    $("ordSummary").innerHTML = `المجموع: <b>${fmt(total)}</b><br>التكلفة المتوقعة: ${fmt(fmtNum(cost))}<br>الربح المتوقع: <b>${fmt(fmtNum(total - cost))}</b> <span class="item-tag tag-gold">متوقع — ماشي فعلي</span>`;
+    rows.forEach((_, i) => note(i));
+  }
+  function draw(){
+    $("ordRows").innerHTML = rows.map((r, i) => `<div class="item-card" style="padding:8px;">
+      <select data-i="${i}" data-f="productId"><option value="">— اختار سلعة —</option>${optionsHtml(r.productId)}</select>
+      <div class="ord-row" style="grid-template-columns:1fr 1fr 1fr auto auto;margin-top:6px;">
+        <input type="number" data-i="${i}" data-f="qty" value="${r.qty}" placeholder="الكمية">
+        <input type="number" data-i="${i}" data-f="price" value="${r.price}" placeholder="الثمن" ${r.gift ? "disabled" : ""}>
+        <input type="number" data-i="${i}" data-f="cost" value="${r.cost}" placeholder="التكلفة">
+        <label style="margin:0;font-size:11px;"><input type="checkbox" data-i="${i}" data-f="gift" ${r.gift ? "checked" : ""} style="width:auto;"> 🎁</label>
+        <button class="icon-btn danger" data-del="${i}" type="button">✕</button></div>
+      <div class="ord-note" id="ordNote_${i}"></div></div>`).join("");
+    $("ordRows").querySelectorAll("[data-f]").forEach(inp => {
+      const handler = () => {
+        const i = parseInt(inp.dataset.i), f = inp.dataset.f;
+        if(f === "productId"){
+          const p = state.products.find(x => x.id === parseInt(inp.value));
+          rows[i].productId = p ? p.id : null;
+          if(p){ rows[i].price = p.promoPrice || p.sellPrice; rows[i].cost = p.buyPrice; draw(); }
+        } else if(f === "gift"){ rows[i].gift = inp.checked; draw(); }
+        else { rows[i][f] = inp.value; }
+        summary();
+      };
+      inp.addEventListener(inp.tagName === "SELECT" || inp.type === "checkbox" ? "change" : "input", handler);
+    });
+    $("ordRows").querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => { if(rows.length > 1){ rows.splice(parseInt(b.dataset.del), 1); draw(); } }));
+    summary();
+  }
+  draw();
+  $("ordAddRow").addEventListener("click", () => { rows.push({ productId: null, qty: 1, price: 0, cost: 0, gift: false }); draw(); });
+  $("ordDiscount").addEventListener("input", summary);
+  $("ordCloseBtn").addEventListener("click", closeModal);
+  $("ordSaveBtn").addEventListener("click", async () => {
+    const data = {
+      clientId: parseInt($("ordClient").value), discount: parseFloat($("ordDiscount").value) || 0,
+      deliveryDate: $("ordDate").value, deliveryTime: $("ordTime").value, notes: $("ordNotes").value.trim(),
+      advance: $("ordAdvance") ? (parseFloat($("ordAdvance").value) || 0) : 0, method: $("ordMethod") ? $("ordMethod").value : "cash",
+      items: rows.filter(r => r.productId).map(r => ({ productId: r.productId, qty: r.qty, price: r.price, expectedCost: r.cost, gift: r.gift }))
+    };
+    const r = await runTxn(editing ? activeOrderRefs([order]) : [], ["orders", "stockMovements"], () => editing ? updateOrder(order, data) : placeOrder(data));
+    if(r.busy) return;
+    if(!r.ok){ showToast(failMsg(r)); return; } // modal stays open: nothing is lost
+    closeModal(); refreshAll();
+    showToast(editing ? "تعدلات الطلبية" : ("تسجلات " + r.result.number + (r.result.status === "waiting_supply" ? " — كتسنى التموين" : "")));
+  });
+}
+async function duplicateOrder(o){
+  const data = { clientId: o.clientId, discount: o.discount || 0, notes: o.notes || "", items: o.items.map(i => ({ productId: i.productId, qty: i.qty, price: i.price, expectedCost: i.expectedCost, gift: i.gift })) };
+  if(data.items.some(i => !i.productId)){ showToast("طلبية قديمة: عدّلها أولا"); return; }
+  const r = await runTxn([], ["orders", "stockMovements"], () => placeOrder(data));
+  if(!r.ok){ if(!r.busy) showToast(failMsg(r)); return; }
+  refreshAll(); showToast("تنسخات: " + r.result.number);
+}
+// ---------- payments ----------
+function openPaymentModal(o){
+  const s = orderStats(o);
+  openModal(`<h3>💵 دفعة — ${o.number}</h3>
+    <div style="font-size:12.5px;margin-bottom:8px;">المجموع: <b>${fmt(s.total)}</b> • مدفوع: <b>${fmt(s.paid)}</b> • الباقي: <b>${fmt(s.remaining)}</b></div>
+    <label>المبلغ</label><input type="number" id="payAmount" value="${Math.max(0, s.remaining)}">
+    <label>طريقة الأداء</label><select id="payMethod">${Object.keys(PAY_METHODS).map(k => `<option value="${k}">${PAY_METHODS[k]}</option>`).join("")}</select>
+    <label>ملاحظة</label><input type="text" id="payNote" placeholder="اختياري">
+    <button class="btn btn-gold btn-full" id="paySaveBtn" style="margin-top:10px;">💾 سجل الدفعة</button>
+    <button class="modal-close" id="payCloseBtn">إغلاق</button>`);
+  document.getElementById("payCloseBtn").addEventListener("click", closeModal);
+  async function submit(force){
+    const amount = parseFloat(document.getElementById("payAmount").value);
+    const method = document.getElementById("payMethod").value, note = document.getElementById("payNote").value.trim();
+    const c = state.clients.find(x => x.id === o.clientId);
+    const r = await runTxn([o].concat(c ? [c] : []), [], () => addPayment(o, amount, method, note, { force }));
+    if(r.busy) return;
+    if(!r.ok){
+      if(r.error && (r.error.code === "overpay" || r.error.code === "dup")){ if(confirm(r.error.message + " — واش متأكد؟")) return submit(true); return; }
+      showToast(failMsg(r)); return;
+    }
+    refreshAll(); showReceiptModal(o, r.result);
+  }
+  document.getElementById("paySaveBtn").addEventListener("click", () => submit(false));
+}
+function showReceiptModal(o, pay){
+  const s = orderStats(o);
+  openModal(`<h3>✅ تسجلات الدفعة ${fmt(pay.amount)}</h3>
+    <div style="font-size:12.5px;margin-bottom:10px;">الباقي فالطلبية ${o.number}: <b>${fmt(s.remaining)}</b></div>
+    <button class="btn btn-primary btn-full" id="rcPrint" style="margin-bottom:8px;">🖨️ وصل الأداء (PDF/طباعة)</button>
+    <button class="btn btn-gold btn-full" id="rcWa" style="margin-bottom:8px;">💬 صيفط الوصل فواتساب</button>
+    <button class="modal-close" id="rcClose">إغلاق</button>`);
+  document.getElementById("rcPrint").addEventListener("click", () => printReceipt(o, pay));
+  document.getElementById("rcWa").addEventListener("click", () => shareToWhatsapp(clientOf(o).phone, receiptText(o, pay)));
+  document.getElementById("rcClose").addEventListener("click", closeModal);
+}
+// ---------- delivery / fail / cancel ----------
+function openDeliverModal(o){
+  const s = orderStats(o), needs = orderNeeds(o);
+  if(needs > 0){ showToast("الستوك ناقص: دير الشراء/التموين أولا"); return; }
+  openModal(`<h3>✅ تسليم ${o.number}</h3>
+    <div style="font-size:12.5px;margin-bottom:8px;">${escapeHtml(o.clientName)} • المجموع <b>${fmt(s.total)}</b> • مدفوع <b>${fmt(s.paid)}</b> • الباقي <b>${fmt(s.remaining)}</b></div>
+    <label>المبلغ المقبوض عند التسليم (0 = ما خلصش، غيتسجل دين)</label><input type="number" id="dlvAmount" value="${Math.max(0, s.remaining)}">
+    <label>طريقة الأداء</label><select id="dlvMethod">${Object.keys(PAY_METHODS).map(k => `<option value="${k}">${PAY_METHODS[k]}</option>`).join("")}</select>
+    <div style="font-size:11.5px;color:var(--muted);margin:6px 0;">كيتحسب البيع والربح الفعلي دابا بالتكلفة الحقيقية، وكيتنقص الستوك.</div>
+    <button class="btn btn-gold btn-full" id="dlvSaveBtn">✅ أكد التسليم</button>
+    <button class="modal-close" id="dlvCloseBtn">إغلاق</button>`);
+  document.getElementById("dlvCloseBtn").addEventListener("click", closeModal);
+  document.getElementById("dlvSaveBtn").addEventListener("click", async () => {
+    const amount = parseFloat(document.getElementById("dlvAmount").value) || 0;
+    if(amount > s.remaining + 0.005 && !confirm("المبلغ كثر من الباقي. نكمل؟")) return;
+    const c = state.clients.find(x => x.id === o.clientId);
+    const refs = [o].concat(c ? [c] : [], o.items.map(i => state.products.find(p => p.id === i.productId)).filter(Boolean));
+    const r = await runTxn(refs, ["invoices", "stockMovements"], () => {
+      if(amount > 0) addPayment(o, amount, document.getElementById("dlvMethod").value, "عند التسليم", { force: true });
+      return deliverOrder(o);
+    });
+    if(r.busy) return;
+    if(!r.ok){ showToast(failMsg(r)); return; }
+    refreshAll(); showToast("تسلّمات — تسجل البيع"); showInvoiceActionModal(r.result);
+  });
+}
+async function failFlow(o){
+  const reason = (prompt("سبب فشل التوصيل؟ (ضروري)", "") || "").trim();
+  if(!reason){ showToast("خاصك تكتب السبب"); return; }
+  const r = await runTxn(activeOrderRefs([o]), [], () => failOrder(o, reason));
+  if(!r.ok){ if(!r.busy) showToast(failMsg(r)); return; }
+  refreshAll(); showToast("تسجل فشل التوصيل — الستوك المحجوز تحرر");
+  if(orderStats(o).paid > 0) alert("كاين " + fmt(orderStats(o).paid) + " مدفوعة فهاد الطلبية. رجعها للزبون ولا خليها لطلبية أخرى.");
+}
+async function cancelFlow(o){
+  if(!confirm("إلغاء " + o.number + "؟ غيتحرر الستوك المحجوز والطلبية كتبقى فالتاريخ.")) return;
+  const reason = (prompt("سبب الإلغاء؟", "") || "").trim();
+  const r = await runTxn(activeOrderRefs([o]), [], () => cancelOrder(o, reason));
+  if(!r.ok){ if(!r.busy) showToast(failMsg(r)); return; }
+  refreshAll(); showToast("تلغات الطلبية");
+  if(orderStats(o).paid > 0) alert("كاين " + fmt(orderStats(o).paid) + " مدفوعة فهاد الطلبية. رجعها للزبون.");
+}
+// ---------- deliveries view ----------
+let deliveryFilter = "today";
+function renderDeliveries(){
+  const chipsEl = document.getElementById("deliveryDateChips");
+  chipsEl.innerHTML = [["today", "اليوم (والمتأخر)"], ["tomorrow", "غدا"], ["all", "كلشي"]].map(d => `<span class="chip ${deliveryFilter === d[0] ? "active" : ""}" data-df="${d[0]}">${d[1]}</span>`).join("");
+  chipsEl.querySelectorAll(".chip").forEach(ch => ch.addEventListener("click", () => { deliveryFilter = ch.dataset.df; renderDeliveries(); }));
+  const today = todayStr(), tomorrow = todayStr(new Date(Date.now() + 86400000));
+  const waiting = state.orders.filter(o => o.status === "waiting_supply").length;
+  let list = state.orders.filter(o => isActiveOrder(o) && o.status !== "waiting_supply" && o.status !== "waiting_confirmation");
+  if(deliveryFilter === "today") list = list.filter(o => !o.deliveryDate || o.deliveryDate <= today);
+  else if(deliveryFilter === "tomorrow") list = list.filter(o => o.deliveryDate === tomorrow);
+  list.sort((a, b) => (clientOf(a).city || "").localeCompare(clientOf(b).city || "") || (clientOf(a).district || "").localeCompare(clientOf(b).district || "") || (a.deliveryTime || "").localeCompare(b.deliveryTime || ""));
+  const due = fmtNum(list.reduce((s, o) => s + Math.max(0, orderStats(o).remaining), 0));
+  document.getElementById("deliverySummary").innerHTML = `<div class="barcode-panel" style="font-size:12px;">${list.length} توصيلة • المبلغ لي خاص يتقبض: <b>${fmt(due)}</b>${waiting ? ` • ${waiting} طلبية كتسنى التموين` : ""} <button class="btn btn-outline btn-sm" id="printDeliveryList" style="margin-inline-start:8px;">🖨️ لائحة التوصيل</button></div>`;
+  document.getElementById("printDeliveryList").addEventListener("click", () => printDeliveryList(list));
+  const el = document.getElementById("deliveryList");
+  if(!list.length){ el.innerHTML = '<div class="empty-state">ماكاين حتى توصيل فهاد الفترة</div>'; return; }
+  let lastGroup = null, html = "";
+  list.forEach(o => {
+    const c = clientOf(o), grp = [c.city || "بلا مدينة", c.district || ""].filter(Boolean).join(" › ");
+    if(grp !== lastGroup){ html += `<div style="margin:12px 0 6px;font-weight:700;color:var(--deep-2);">📍 ${escapeHtml(grp)}</div>`; lastGroup = grp; }
+    const s = orderStats(o), late = o.deliveryDate && o.deliveryDate < today;
+    html += `<div class="item-card">
+      <div class="item-top"><div><div class="item-name">${o.number} — ${escapeHtml(o.clientName)}${c.shopName ? " (" + escapeHtml(c.shopName) + ")" : ""}</div>
+        <div style="font-size:11.5px;color:var(--muted);">${escapeHtml(c.address || "")} ${c.phone ? "• " + escapeHtml(c.phone) : ""}</div>
+        <div style="font-size:11.5px;color:${late ? "var(--danger)" : "var(--muted)"};">${o.deliveryDate || "بلا تاريخ"} ${o.deliveryTime || ""}${late ? " (متأخرة)" : ""}</div></div>
+        <span class="item-tag ${orderBadgeClass(o.status)}">${ORDER_STATUS[o.status]}</span></div>
+      <div class="item-meta"><span>المجموع: <b>${fmt(s.total)}</b></span><span>خاص يتقبض: <b>${fmt(Math.max(0, s.remaining))}</b></span></div>
+      <div class="ledger-mini open" style="display:block;">${o.items.map(it => `<div class="lrow"><span>${escapeHtml(it.name)} × ${it.qty}</span></div>`).join("")}</div>
+      ${o.notes ? `<div style="font-size:11.5px;color:var(--muted);">📝 ${escapeHtml(o.notes)}</div>` : ""}
+      <div class="btn-row" style="margin-top:8px;flex-wrap:wrap;gap:6px;">
+        ${o.status !== "out_for_delivery" ? `<button class="btn btn-outline btn-sm" data-dl="out" data-id="${o.id}">🚚 خرجات</button>` : ""}
+        <button class="btn btn-gold btn-sm" data-dl="deliver" data-id="${o.id}">✅ تسليم</button>
+        <button class="btn btn-outline btn-sm" data-dl="fail" data-id="${o.id}">🚫 فشل</button>
+        <button class="btn btn-outline btn-sm" data-dl="map" data-id="${o.id}">🗺️</button>
+        ${c.phone ? `<button class="btn btn-outline btn-sm" data-dl="call" data-id="${o.id}">📞</button><button class="btn btn-outline btn-sm" data-dl="wa" data-id="${o.id}">💬</button>` : ""}
+      </div></div>`;
+  });
+  el.innerHTML = html;
+}
+document.getElementById("deliveryList").addEventListener("click", async (e) => {
+  const b = e.target.closest ? e.target.closest("[data-dl]") : null; if(!b) return;
+  const o = state.orders.find(x => x.id === parseInt(b.dataset.id)); if(!o) return;
+  const c = clientOf(o), a = b.dataset.dl;
+  if(a === "out"){ const r = await runTxn([o], [], () => setOrderStatus(o, "out_for_delivery")); if(!r.ok && !r.busy) showToast(failMsg(r)); refreshAll(); }
+  else if(a === "deliver") openDeliverModal(o);
+  else if(a === "fail") failFlow(o);
+  else if(a === "map"){ const url = mapsLinkForClient(c); if(url) window.open(url, "_blank"); else showToast("ماكاين حتى عنوان ولا GPS"); }
+  else if(a === "call") window.open("tel:" + c.phone);
+  else if(a === "wa") window.open("https://wa.me/" + normalizePhone(c.phone), "_blank");
+});
+// ---------- purchases ----------
+function openPurchaseModal(opts){
+  opts = opts || {};
+  if(state.suppliers.length === 0){ showToast("زيد مورد أولا"); return; }
+  const order = opts.orderId ? state.orders.find(o => o.id === opts.orderId) : null;
+  let rows = [];
+  if(order){ order.items.forEach(it => { const n = itemNeeds(it); if(n > 0 && it.productId) rows.push({ productId: it.productId, qty: n, cost: it.expectedCost || 0 }); }); }
+  if(!rows.length) rows.push({ productId: null, qty: 1, cost: 0 });
+  openModal(`<h3>🛒 فاتورة شراء ${order ? "— لطلبية " + order.number : ""}</h3>
+    <label>المورد</label><select id="puSupplier"><option value="">— اختار —</option>${state.suppliers.map(s => `<option value="${s.id}" ${s.id === opts.supplierId ? "selected" : ""}>${escapeHtml(s.name)}</option>`).join("")}</select>
+    <div id="puRows" style="margin-top:8px;"></div>
+    <button class="btn btn-outline btn-sm" id="puAdd" type="button">+ سلعة</button>
+    <div class="field-row" style="margin-top:8px;"><div><label>خصم</label><input type="number" id="puDiscount" value="0"></div><div><label>مصاريف النقل</label><input type="number" id="puTransport" value="0"></div></div>
+    <label>المبلغ المخلّص للمورد دابا</label><input type="number" id="puPaid" value="0">
+    <div class="barcode-panel" id="puSummary" style="margin-top:8px;font-size:12.5px;"></div>
+    <button class="btn btn-gold btn-full" id="puSave">💾 سجل الشراء</button>
+    <button class="modal-close" id="puClose">إغلاق</button>`);
+  const $ = id => document.getElementById(id);
+  function sum(){
+    const sub = rows.reduce((s, r) => s + (parseFloat(r.qty) || 0) * (parseFloat(r.cost) || 0), 0);
+    const total = Math.max(0, sub - (parseFloat($("puDiscount").value) || 0) + (parseFloat($("puTransport").value) || 0));
+    $("puSummary").innerHTML = `المجموع: <b>${fmt(fmtNum(total))}</b> • الباقي للمورد: <b>${fmt(fmtNum(Math.max(0, total - (parseFloat($("puPaid").value) || 0))))}</b>`;
+  }
+  function draw(){
+    $("puRows").innerHTML = rows.map((r, i) => `<div class="item-card" style="padding:8px;"><select data-i="${i}" data-f="productId"><option value="">— سلعة —</option>${state.products.map(p => `<option value="${p.id}" ${p.id === r.productId ? "selected" : ""}>${escapeHtml(p.name)}</option>`).join("")}</select>
+      <div class="ord-row" style="grid-template-columns:1fr 1fr auto;margin-top:6px;"><input type="number" data-i="${i}" data-f="qty" value="${r.qty}" placeholder="الكمية"><input type="number" data-i="${i}" data-f="cost" value="${r.cost}" placeholder="ثمن الشراء"><button class="icon-btn danger" data-del="${i}" type="button">✕</button></div></div>`).join("");
+    $("puRows").querySelectorAll("[data-f]").forEach(inp => inp.addEventListener(inp.tagName === "SELECT" ? "change" : "input", () => {
+      const i = parseInt(inp.dataset.i), f = inp.dataset.f;
+      if(f === "productId"){ const p = state.products.find(x => x.id === parseInt(inp.value)); rows[i].productId = p ? p.id : null; if(p){ rows[i].cost = p.buyPrice || 0; draw(); } }
+      else rows[i][f] = inp.value;
+      sum();
+    }));
+    $("puRows").querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => { if(rows.length > 1){ rows.splice(parseInt(b.dataset.del), 1); draw(); } }));
+    sum();
+  }
+  draw();
+  $("puAdd").addEventListener("click", () => { rows.push({ productId: null, qty: 1, cost: 0 }); draw(); });
+  ["puDiscount", "puTransport", "puPaid"].forEach(id => $(id).addEventListener("input", sum));
+  $("puClose").addEventListener("click", closeModal);
+  $("puSave").addEventListener("click", async () => {
+    const supplierId = parseInt($("puSupplier").value);
+    const sup = state.suppliers.find(s => s.id === supplierId);
+    const prods = rows.map(r => state.products.find(p => p.id === r.productId)).filter(Boolean);
+    const refs = [].concat(sup ? [sup] : [], prods, order ? activeOrderRefs([order]) : []);
+    const d = { supplierId, items: rows, discount: $("puDiscount").value, transport: $("puTransport").value, paid: $("puPaid").value, orderId: order ? order.id : null };
+    const r = await runTxn(refs, ["purchases", "stockMovements"], () => createPurchase(d));
+    if(r.busy) return;
+    if(!r.ok){ showToast(failMsg(r)); return; }
+    closeModal(); refreshAll(); renderSuppliers(); showToast("تسجل الشراء " + r.result.number);
+  });
+}
+document.getElementById("newPurchaseBtn").addEventListener("click", () => openPurchaseModal({}));
+function renderPurchases(){
+  const el = document.getElementById("purchaseList"); if(!el) return;
+  if(!state.purchases.length){ el.innerHTML = '<div class="empty-state">ماكاين حتى فاتورة شراء</div>'; return; }
+  el.innerHTML = state.purchases.slice().reverse().slice(0, 30).map(p => `<div class="cart-line"><span class="ci-name">${p.number} — ${escapeHtml(p.supplierName)}<br><span style="font-size:11px;color:var(--muted);">${dateShort(p.date)} • ${p.items.map(i => escapeHtml(i.name) + "×" + i.qty).join("، ")}${p.orderNumber ? " • " + p.orderNumber : ""}</span></span>
+    <span style="display:flex;align-items:center;gap:6px;"><b class="num">${fmt(p.total)}</b><button class="icon-btn pu-print" data-id="${p.id}">🖨️</button></span></div>`).join("");
+  el.querySelectorAll(".pu-print").forEach(b => b.addEventListener("click", () => printPurchaseDoc(state.purchases.find(p => p.id === parseInt(b.dataset.id)))));
+}
+// ---------- documents (print/PDF + WhatsApp) ----------
+function docShell(title, number, dateIso, body){
+  return `<div style="text-align:center;margin-bottom:10px;"><div style="font-size:20px;font-weight:900;">KONTAJIRAN STORE</div><div style="font-size:15px;font-weight:700;margin-top:4px;">${title}</div><div style="font-size:12px;">${number} — ${dateShort(dateIso)}</div></div>${body}<div style="text-align:center;font-size:11px;margin-top:14px;">شكرا على ثقتكم</div>`;
+}
+function printHtml(html){ document.getElementById("printArea").innerHTML = html; closeModal(); setTimeout(() => window.print(), 100); }
+function printOrderDoc(o, kind){
+  const s = orderStats(o), c = clientOf(o);
+  const rows = o.items.map(i => `<tr><td>${i.gift ? "🎁 " : ""}${escapeHtml(i.name)}</td><td style="text-align:center;">${i.qty}</td>${kind === "order" ? `<td style="text-align:left;">${i.gift ? 0 : i.price}</td><td style="text-align:left;">${i.gift ? 0 : fmtNum(i.price * i.qty)}</td>` : ""}</tr>`).join("");
+  const head = `<div style="font-size:13px;margin-bottom:6px;">الزبون: <b>${escapeHtml(o.clientName)}</b>${c.shopName ? " — " + escapeHtml(c.shopName) : ""}<br>${escapeHtml(c.phone || "")} ${escapeHtml([c.city, c.district, c.address].filter(Boolean).join("، "))}<br>تاريخ التسليم: ${o.deliveryDate || "—"} ${o.deliveryTime || ""} • الحالة: ${ORDER_STATUS[o.status]}</div>`;
+  const tot = kind === "order" ? `<div style="font-size:13px;margin-top:8px;">${o.discount ? "خصم: " + fmt(s.discount) + "<br>" : ""}المجموع: <b>${fmt(s.total)}</b><br>مدفوع: ${fmt(s.paid)}<br>الباقي: <b>${fmt(Math.max(0, s.remaining))}</b></div>` : `<div style="font-size:13px;margin-top:14px;">توقيع المستلم: ____________________</div>`;
+  printHtml(docShell(kind === "order" ? "تأكيد طلبية" : "وصل تسليم", o.number, o.date, head + `<table style="width:100%;border-collapse:collapse;font-size:13px;" border="1" cellpadding="4"><thead><tr><td>السلعة</td><td>الكمية</td>${kind === "order" ? "<td>الثمن</td><td>المجموع</td>" : ""}</tr></thead><tbody>${rows}</tbody></table>` + tot));
+}
+function receiptText(o, pay){ return `🧾 Kontajiran Store — وصل أداء\nالطلبية: ${o.number}\nالزبون: ${o.clientName}\nالمبلغ: ${fmtNum(pay.amount)} د.م (${PAY_METHODS[pay.method] || pay.method})\nالتاريخ: ${dateShort(pay.date)}\nالباقي: ${fmtNum(orderStats(o).remaining)} د.م`; }
+function printReceipt(o, pay){ printHtml(docShell("وصل أداء", "REC-" + pad(pay.id), pay.date, `<div style="font-size:14px;line-height:2;">الزبون: <b>${escapeHtml(o.clientName)}</b><br>الطلبية: ${o.number}<br>المبلغ المستلم: <b>${fmt(pay.amount)}</b> (${PAY_METHODS[pay.method] || pay.method})<br>الباقي: <b>${fmt(Math.max(0, orderStats(o).remaining))}</b></div>`)); }
+function shareToWhatsapp(phone, text){ window.open("https://wa.me/" + (phone ? normalizePhone(phone) : "") + "?text=" + encodeURIComponent(text), "_blank"); }
+function shareOrderWhatsapp(o){
+  const s = orderStats(o);
+  shareToWhatsapp(clientOf(o).phone, ["🛍️ Kontajiran Store — طلبية " + o.number, "الزبون: " + o.clientName, ""].concat(o.items.map(i => `• ${i.name} × ${i.qty}${i.gift ? " 🎁" : " = " + fmtNum(i.price * i.qty) + " د.م"}`), ["", "المجموع: " + s.total + " د.م", "مدفوع: " + s.paid + " د.م", "الباقي: " + Math.max(0, s.remaining) + " د.م", "الحالة: " + ORDER_STATUS[o.status]]).join("\n"));
+}
+function printPurchaseDoc(p){
+  if(!p) return;
+  printHtml(docShell("فاتورة شراء", p.number, p.date, `<div style="font-size:13px;">المورد: <b>${escapeHtml(p.supplierName)}</b></div><table style="width:100%;border-collapse:collapse;font-size:13px;" border="1" cellpadding="4"><thead><tr><td>السلعة</td><td>الكمية</td><td>الثمن</td></tr></thead><tbody>${p.items.map(i => `<tr><td>${escapeHtml(i.name)}</td><td>${i.qty}</td><td>${i.cost}</td></tr>`).join("")}</tbody></table><div style="font-size:13px;margin-top:8px;">خصم: ${fmt(p.discount)} • نقل: ${fmt(p.transport)}<br>المجموع: <b>${fmt(p.total)}</b> • مخلّص: ${fmt(p.paid)} • باقي: ${fmt(fmtNum(p.total - p.paid))}</div>`));
+}
+function printDeliveryList(list){
+  printHtml(docShell("لائحة التوصيل", todayStr(), new Date().toISOString(), `<table style="width:100%;border-collapse:collapse;font-size:12px;" border="1" cellpadding="4"><thead><tr><td>الطلبية</td><td>الزبون / العنوان</td><td>الهاتف</td><td>خاص يتقبض</td></tr></thead><tbody>${list.map(o => { const c = clientOf(o); return `<tr><td>${o.number}</td><td>${escapeHtml(o.clientName)}<br>${escapeHtml([c.city, c.district, c.address].filter(Boolean).join("، "))}</td><td>${escapeHtml(c.phone || "")}</td><td>${fmt(Math.max(0, orderStats(o).remaining))}</td></tr>`; }).join("")}</tbody></table>`));
+}
+function printStatement(c){
+  const invs = state.invoices.filter(i => i.clientId === c.id);
+  const rows = invs.map(i => `<tr><td>${dateShort(i.date)}</td><td>#${i.id}</td><td>${fmt(i.total)}</td><td>${fmt(i.paid)}</td><td>${fmt(i.creditAdded)}</td></tr>`).join("");
+  const pays = (c.ledger || []).filter(l => l.type === "payment" && l.desc === "تسديد").map(l => `<tr><td>${dateShort(l.date)}</td><td colspan="2">دفعة ${l.ref || ""}</td><td>${fmt(l.amount)}</td><td></td></tr>`).join("");
+  printHtml(docShell("كشف حساب الزبون", "CLT-" + pad(c.id), new Date().toISOString(), `<div style="font-size:13px;">الزبون: <b>${escapeHtml(c.name)}</b> ${escapeHtml(c.shopName || "")} • ${escapeHtml(c.phone || "")}</div><table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;" border="1" cellpadding="4"><thead><tr><td>التاريخ</td><td>الفاتورة</td><td>المجموع</td><td>مدفوع</td><td>دين</td></tr></thead><tbody>${rows}${pays}</tbody></table><div style="font-size:14px;margin-top:10px;">الدين الحالي: <b>${fmt(c.credit)}</b></div>`));
+}
+// ---------- customer profile (CRM) ----------
+function openClientProfile(id){
+  const c = state.clients.find(x => x.id === id); if(!c) return;
+  const invs = state.invoices.filter(i => i.clientId === id);
+  const orders = state.orders.filter(o => o.clientId === id);
+  const purchases = fmtNum(invs.reduce((s, i) => s + i.total, 0));
+  const profit = fmtNum(invs.reduce((s, i) => s + i.profit, 0));
+  const paid = fmtNum(invs.filter(i => !i.orderId).reduce((s, i) => s + i.paid, 0) + orders.reduce((s, o) => s + (o.payments || []).reduce((a, p) => a + p.amount, 0), 0) + (c.ledger || []).filter(l => l.type === "payment" && l.desc === "تسديد" && !l.orderPayment).reduce((s, l) => s + l.amount, 0));
+  const visits = state.visits.filter(v => v.clientId === id);
+  const last = visits.length ? visits[visits.length - 1].date.slice(0, 10) : "—";
+  const next = visits.filter(v => v.nextVisit && !v.followDone).map(v => v.nextVisit).sort()[0] || "—";
+  openModal(`<h3>👤 ${escapeHtml(c.name)}${c.shopName ? " — " + escapeHtml(c.shopName) : ""}</h3>
+    <div style="font-size:12.5px;line-height:1.9;">${escapeHtml(c.phone || "")} ${escapeHtml([c.city, c.district, c.address].filter(Boolean).join("، "))}<br>${c.shopType ? "نوع المحل: " + escapeHtml(c.shopType) + " • " : ""}${c.category ? "الصنف: " + escapeHtml(c.category) + " • " : ""}تسجل: ${(c.createdAt || "").slice(0, 10) || "—"}<br>
+    <b>إجمالي المشتريات:</b> ${fmt(purchases)} • <b>الربح المحقق منو:</b> ${fmt(profit)}<br><b>إجمالي المدفوع:</b> ${fmt(paid)} • <b>الدين:</b> ${fmt(c.credit)}<br>
+    الطلبيات: ${orders.length} (جارية ${orders.filter(isActiveOrder).length}) • الفواتير: ${invs.length}<br>آخر زيارة: ${last} • المتابعة الجاية: ${next}<br>${c.notes ? "📝 " + escapeHtml(c.notes) : ""}</div>
+    <div class="btn-row" style="flex-wrap:wrap;gap:6px;margin-top:10px;">
+      <button class="btn btn-outline btn-sm" id="cpOrders">📋 طلبياتو</button><button class="btn btn-outline btn-sm" id="cpInvoices">📜 فواتيرو</button>
+      <button class="btn btn-gold btn-sm" id="cpNew">+ طلبية</button><button class="btn btn-outline btn-sm" id="cpStatement">🖨️ كشف الحساب</button></div>
+    <button class="modal-close" id="cpClose">إغلاق</button>`);
+  document.getElementById("cpClose").addEventListener("click", closeModal);
+  document.getElementById("cpOrders").addEventListener("click", () => { closeModal(); orderFilter = "all"; showView("orders"); document.getElementById("orderSearch").value = c.name; renderOrders(); });
+  document.getElementById("cpInvoices").addEventListener("click", () => { closeModal(); showClientInvoiceHistory(c.id, c.name); });
+  document.getElementById("cpNew").addEventListener("click", () => { closeModal(); showView("orders"); openOrderModal(null, { clientId: c.id }); });
+  document.getElementById("cpStatement").addEventListener("click", () => printStatement(c));
+}
+// ---------- routes ----------
+function haversineKm(a, b){
+  const R = 6371, rad = x => x * Math.PI / 180, dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function optimizeRoute(clients, origin){
+  const withGps = clients.map(c => ({ c, g: parseGps(c.gps) })).filter(x => x.g);
+  const without = clients.filter(c => !parseGps(c.gps));
+  const ordered = []; let cur = origin || (withGps[0] && withGps[0].g), pool = withGps.slice(), total = 0;
+  while(pool.length){
+    let bi = 0, bd = Infinity;
+    pool.forEach((x, i) => { const d = cur ? haversineKm(cur, x.g) : 0; if(d < bd){ bd = d; bi = i; } });
+    const nx = pool.splice(bi, 1)[0]; total += cur ? bd : 0; ordered.push({ c: nx.c, g: nx.g, km: cur ? bd : 0 }); cur = nx.g;
+  }
+  return { ordered, without, totalKm: total };
+}
+async function openRouteOptimizer(){
+  const sector = (state.weeklyPlan || {})[new Date().getDay()] || "";
+  const clients = sector ? state.clients.filter(c => c.sector === sector) : [];
+  if(!clients.length){ showToast("ماكاين حتى زبون فجولة اليوم"); return; }
+  let origin = null; try{ origin = parseGps(await getCurrentGps()); }catch(e){}
+  const r = optimizeRoute(clients, origin);
+  const stops = r.ordered.slice(0, 9).map(x => x.g.lat + "," + x.g.lng);
+  const url = stops.length ? "https://www.google.com/maps/dir/?api=1" + (origin ? "&origin=" + origin.lat + "," + origin.lng : "") + "&destination=" + stops[stops.length - 1] + (stops.length > 1 ? "&waypoints=" + stops.slice(0, -1).join("|") : "") + "&travelmode=driving" : "";
+  openModal(`<h3>🧭 جولة اليوم المرتبة</h3>
+    <div style="font-size:12px;margin-bottom:8px;">ترتيب بأقرب زبون (تقريبي، بالخط المباشر). المسافة التقريبية: <b>${r.totalKm.toFixed(1)} كم</b>${origin ? "" : " (بلا موقعك الحالي)"}</div>
+    ${r.ordered.map((x, i) => `<div class="cart-line"><span class="ci-name">${i + 1}. ${escapeHtml(x.c.name)}${x.c.shopName ? " — " + escapeHtml(x.c.shopName) : ""}</span><span class="ci-price">${x.km.toFixed(1)} كم</span></div>`).join("")}
+    ${r.without.length ? `<div style="font-size:11.5px;color:var(--danger);margin-top:6px;">بلا GPS (ماتترتبوش): ${r.without.map(c => escapeHtml(c.name)).join("، ")}</div>` : ""}
+    ${url ? `<button class="btn btn-gold btn-full" id="rtOpen" style="margin-top:10px;">🗺️ افتح الجولة فـ Google Maps${r.ordered.length > 9 ? " (أول 9 محطات)" : ""}</button>` : ""}
+    <button class="modal-close" id="rtClose">إغلاق</button>`);
+  if(url) document.getElementById("rtOpen").addEventListener("click", () => window.open(url, "_blank"));
+  document.getElementById("rtClose").addEventListener("click", closeModal);
+}
+function renderTodayRoute(){
+  renderTodayRouteBase();
+  const el = document.getElementById("todayRouteCard");
+  const sector = (state.weeklyPlan || {})[new Date().getDay()] || "";
+  if(sector && state.clients.some(c => c.sector === sector)){
+    const b = document.createElement("button");
+    b.className = "btn btn-outline btn-sm btn-full"; b.style.marginTop = "8px"; b.id = "routeOptBtn"; b.textContent = "🧭 رتب الجولة وفتحها فـ Maps";
+    b.addEventListener("click", openRouteOptimizer);
+    el.appendChild(b);
+  }
+}
+
+// ================= DASHBOARD / REPORTS / FINANCE / SEARCH / BACKUP =================
+function periodKeys(){
+  const r = computePeriodRange();
+  return { a: r.start ? todayStr(r.start) : "", b: r.end ? todayStr(r.end) : "" };
+}
+function renderDashOrders(){
+  const today = todayStr(), mk = monthStr();
+  const $ = id => document.getElementById(id);
+  $("statCashToday").textContent = fmt(cashReceivedBetween(today, today));
+  $("statExpectedProfit").textContent = fmt(expectedProfitActive());
+  $("statActiveOrders").textContent = state.orders.filter(isActiveOrder).length;
+  $("statWaitingSupply").textContent = state.orders.filter(o => o.status === "waiting_supply").length;
+  $("statReadyOrders").textContent = state.orders.filter(o => o.status === "ready").length;
+  $("statDeliveredMonth").textContent = state.orders.filter(o => o.status === "delivered" && o.deliveredAt && localMonthKey(o.deliveredAt) === mk).length;
+  $("statOutOfStock").textContent = state.products.filter(p => p.active !== false && p.qty <= 0).length;
+  // period summary (actual vs expected kept apart)
+  const m = computePeriodStats(), k = periodKeys();
+  const cash = cashReceivedBetween(k.a, k.b);
+  const dl = state.orders.filter(o => o.status === "delivered" && o.deliveredAt && inKeyRange(o.deliveredAt, k.a, k.b)).length;
+  const bad = state.orders.filter(o => (o.status === "failed" || o.status === "cancelled") && inKeyRange(o.date, k.a, k.b)).length;
+  $("dashPeriodLabel").textContent = periodLabel();
+  $("dashPeriodStats").innerHTML = `
+    <div class="stat good"><div class="lbl">المبيعات الفعلية</div><div class="val num">${fmt(m.totalSales)}</div></div>
+    <div class="stat good"><div class="lbl">الربح الفعلي</div><div class="val num">${fmt(m.totalProfit)}</div></div>
+    <div class="stat warn"><div class="lbl">المصاريف</div><div class="val num">${fmt(m.totalExpenses)}</div></div>
+    <div class="stat good"><div class="lbl">الربح الصافي الفعلي</div><div class="val num">${fmt(m.netProfit)}</div></div>
+    <div class="stat"><div class="lbl">الفلوس المقبوضة</div><div class="val num">${fmt(cash)}</div></div>
+    <div class="stat"><div class="lbl">ربح متوقع (جارية)</div><div class="val num">${fmt(expectedProfitActive())}</div></div>
+    <div class="stat"><div class="lbl">توصيلات ناجحة</div><div class="val num">${dl}</div></div>
+    <div class="stat warn"><div class="lbl">فاشلة / ملغية</div><div class="val num">${bad}</div></div>`;
+  // best customers this month
+  const by = {};
+  state.invoices.filter(i => localMonthKey(i.date) === mk).forEach(i => { const key = i.clientName || "—"; by[key] = (by[key] || 0) + i.total; });
+  const top = Object.keys(by).map(n => [n, by[n]]).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  $("dashBestClients").innerHTML = top.length ? top.map((t, i) => `<div class="cart-line"><span class="ci-name">${i + 1}. ${escapeHtml(t[0])}</span><span class="ci-price">${fmt(fmtNum(t[1]))}</span></div>`).join("") : '<div class="empty-state" style="padding:14px;">مازال ماكاين حتى بيع</div>';
+}
+document.getElementById("dashPeriodBtn").addEventListener("click", openPeriodModal);
+
+// ---------- report breakdowns ----------
+function groupSum(rows, keyFn, valFn){ const m = {}; rows.forEach(r => { const k = keyFn(r) || "—"; m[k] = (m[k] || 0) + valFn(r); }); return Object.keys(m).map(k => [k, fmtNum(m[k])]).sort((a, b) => b[1] - a[1]); }
+function listCard(title, rows, fmtVal, limit){
+  const body = rows.length ? rows.slice(0, limit || 8).map((r, i) => `<div class="cart-line"><span class="ci-name">${i + 1}. ${escapeHtml(String(r[0]))}</span><span class="ci-price">${fmtVal ? fmtVal(r[1]) : r[1]}</span></div>`).join("") : '<div class="empty-state" style="padding:12px;">—</div>';
+  return `<div class="card"><h2>${title}</h2>${body}</div>`;
+}
+function renderReportBreakdowns(m){
+  const el = document.getElementById("repBreakdowns"); if(!el) return;
+  const k = periodKeys();
+  const lines = []; m.invs.forEach(i => i.items.forEach(it => lines.push({ inv: i, it })));
+  const prodOf = id => state.products.find(p => p.id === id) || {};
+  const catOf = l => prodOf(l.it.productId).sector || "بلا صنف";
+  const lineRev = l => l.it.gift ? 0 : l.it.unitPrice * l.it.qty;
+  const lineProfit = l => lineRev(l) - (l.it.unitCost || 0) * l.it.qty;
+  const cityOf = i => (state.clients.find(c => c.id === i.clientId) || {}).city || "بلا مدينة";
+  const expBy = groupSum(m.exps, e => expenseCatName(e.category), e => e.amount);
+  const od = state.orders.filter(o => inKeyRange(o.date, k.a, k.b));
+  const delivered = state.orders.filter(o => o.status === "delivered" && o.deliveredAt && inKeyRange(o.deliveredAt, k.a, k.b)).length;
+  const failed = od.filter(o => o.status === "failed").length, canc = od.filter(o => o.status === "cancelled").length;
+  const slow = state.products.filter(p => p.active !== false).map(p => [p.name, fmtNum(lines.filter(l => l.it.productId === p.id).reduce((s, l) => s + l.it.qty, 0))]).sort((a, b) => a[1] - b[1]);
+  const moves = state.stockMovements.slice(-40).reverse();
+  const MT = { purchase:"شراء", sale:"بيع", order_delivery:"تسليم طلبية", adjustment:"تعديل/جرد", stock_in:"دخول ستوك", opening:"ستوك أولي", invoice_void:"مسح فاتورة" };
+  el.innerHTML =
+    listCard("📦 المبيعات حسب السلعة (الربح)", groupSum(lines, l => l.it.name, lineProfit), v => fmt(v)) +
+    listCard("👥 المبيعات حسب الزبون", groupSum(m.invs, i => i.clientName, i => i.total), v => fmt(v)) +
+    listCard("🏙️ المبيعات حسب المدينة", groupSum(m.invs, cityOf, i => i.total), v => fmt(v)) +
+    listCard("🗂️ المبيعات حسب الصنف", groupSum(lines, catOf, lineRev), v => fmt(v)) +
+    listCard("🐌 السلع البطيئة (أقل كمية)", slow, v => v + " وحدة", 6) +
+    listCard("💸 المصاريف حسب النوع", expBy, v => fmt(v)) +
+    listCard("🧾 ديون الزبناء", state.clients.filter(c => c.credit > 0).map(c => [c.name, c.credit]).sort((a, b) => b[1] - a[1]), v => fmt(v), 10) +
+    listCard("🚚 ديون الموردين", state.suppliers.filter(s => s.debt > 0).map(s => [s.name, s.debt]).sort((a, b) => b[1] - a[1]), v => fmt(v), 10) +
+    `<div class="card"><h2>🚚 أداء التوصيل</h2><div class="stat-grid"><div class="stat good"><div class="lbl">ناجحة</div><div class="val num">${delivered}</div></div><div class="stat warn"><div class="lbl">فاشلة</div><div class="val num">${failed}</div></div><div class="stat warn"><div class="lbl">ملغية</div><div class="val num">${canc}</div></div></div></div>` +
+    `<div class="card"><h2>📦 قيمة الستوك</h2><div class="stat-grid"><div class="stat"><div class="lbl">بثمن الشراء</div><div class="val num">${fmt(fmtNum(state.products.reduce((s, p) => s + p.qty * p.buyPrice, 0)))}</div></div><div class="stat"><div class="lbl">بثمن البيع</div><div class="val num">${fmt(fmtNum(state.products.reduce((s, p) => s + p.qty * p.sellPrice, 0)))}</div></div></div></div>` +
+    `<div class="card"><h2>📒 حركات الستوك (آخر 40)</h2>${moves.length ? `<table class="mini-table">${moves.map(x => `<tr><td>${dateShort(x.date)}</td><td>${escapeHtml(x.productName)}</td><td><b>${x.qty > 0 ? "+" : ""}${x.qty}</b></td><td>${MT[x.type] || x.type}</td><td>${escapeHtml(x.ref)}</td></tr>`).join("")}</table>` : '<div class="empty-state" style="padding:12px;">—</div>'}<button class="btn btn-outline btn-sm" id="exportMovesCsv" style="margin-top:8px;">📊 تصدير الحركات (Excel)</button></div>`;
+  const mv = document.getElementById("exportMovesCsv");
+  if(mv) mv.addEventListener("click", () => downloadCsv("kontajiran-stock-movements-" + todayStr() + ".csv", [["Date","Product","Qty","Type","Reference","Note"]].concat(state.stockMovements.map(x => [dateShort(x.date), x.productName, x.qty, x.type, x.ref, x.note]))));
+}
+
+// ---------- finance ----------
+function populateExpenseCats(){
+  const sel = document.getElementById("eCategory"); if(!sel) return;
+  const cur = sel.value, cats = allExpenseCats();
+  sel.innerHTML = Object.keys(cats).map(k => `<option value="${k}">${escapeHtml(cats[k])}</option>`).join("");
+  if(cur && cats[cur]) sel.value = cur;
+}
+document.getElementById("eCatAddBtn").addEventListener("click", async () => {
+  const name = (prompt("سمية النوع الجديد ديال المصروف؟", "") || "").trim();
+  if(!name) return;
+  const cat = { key: "c" + Date.now(), name };
+  state.expenseCats.push(cat);
+  const ok = await saveState();
+  if(!ok){ state.expenseCats.pop(); showStorageFullModal(); return; }
+  populateExpenseCats(); document.getElementById("eCategory").value = cat.key; showToast("تزاد النوع");
+});
+async function capitalMove(type){
+  const amount = parseFloat(prompt(type === "injection" ? "شحال زدتي فرأس المال؟" : "شحال سحبتي (سحب صاحب المحل)؟", ""));
+  if(!(amount > 0)) return;
+  const note = prompt("ملاحظة (اختياري)", "") || "";
+  const mv = { id: state.nextId.capital++, date: todayStr(), type, amount: fmtNum(amount), note };
+  state.capitalMoves.push(mv);
+  const ok = await saveState();
+  if(!ok){ state.capitalMoves.pop(); state.nextId.capital--; showStorageFullModal(); return; }
+  renderExpenses(); showToast("تسجل");
+}
+document.getElementById("capitalInBtn").addEventListener("click", () => capitalMove("injection"));
+document.getElementById("capitalOutBtn").addEventListener("click", () => capitalMove("withdrawal"));
+
+// ---------- global search & quick actions ----------
+function goTo(view, setup){ closeModal(); showView(view); if(setup) setup(); }
+function openGlobalSearch(){
+  openModal(`<h3>🔍 بحث شامل</h3><input type="text" id="gsInput" placeholder="سلعة، زبون، طلبية، فاتورة، مورد، دفعة..."><div id="gsResults" style="margin-top:10px;"></div><button class="modal-close" id="gsClose">إغلاق</button>`);
+  document.getElementById("gsClose").addEventListener("click", closeModal);
+  const input = document.getElementById("gsInput");
+  input.addEventListener("input", () => {
+    const q = input.value.trim().toLowerCase(), out = document.getElementById("gsResults");
+    if(q.length < 2){ out.innerHTML = ""; return; }
+    const has = (...a) => a.join(" ").toLowerCase().includes(q);
+    const groups = [
+      ["📦 سلع", state.products.filter(p => has(p.name, p.barcode || "", p.sku || "", p.brand || "", p.sector || "")).slice(0, 5).map(p => [p.name + " • " + p.qty, () => goTo("products", () => { document.getElementById("productSearch").value = p.name; renderProducts(); })])],
+      ["👥 زبناء", state.clients.filter(c => has(c.name, c.shopName || "", c.phone || "", c.city || "")).slice(0, 5).map(c => [c.name + (c.shopName ? " — " + c.shopName : ""), () => goTo("clients", () => { document.getElementById("clientSearch").value = c.name; renderClients(); })])],
+      ["📋 طلبيات", state.orders.filter(o => has(o.number, o.clientName, o.items.map(i => i.name).join(" "))).slice(0, 5).map(o => [o.number + " — " + o.clientName + " • " + ORDER_STATUS[o.status], () => goTo("orders", () => { orderFilter = "all"; document.getElementById("orderSearch").value = o.number; renderOrders(); })])],
+      ["🧾 فواتير", state.invoices.filter(i => has("#" + i.id, String(i.id), i.clientName, i.orderNumber || "")).slice(0, 5).map(i => ["#" + i.id + " — " + i.clientName + " • " + fmt(i.total), () => goTo("invoices", () => { document.getElementById("invoiceSearch").value = String(i.id); renderInvoices(); })])],
+      ["🚚 موردين", state.suppliers.filter(s => has(s.name, s.phone || "")).slice(0, 5).map(s => [s.name, () => goTo("suppliers")])],
+      ["💵 دفعات", state.orders.filter(o => (o.payments || []).some(p => has(String(p.amount), o.number, o.clientName))).slice(0, 5).map(o => [o.number + " — " + o.clientName, () => goTo("orders", () => { orderFilter = "all"; document.getElementById("orderSearch").value = o.number; renderOrders(); })])]
+    ];
+    out.innerHTML = "";
+    groups.forEach(g => { if(!g[1].length) return; const h = document.createElement("div"); h.style.cssText = "font-weight:700;margin:8px 0 4px;"; h.textContent = g[0]; out.appendChild(h);
+      g[1].forEach(r => { const b = document.createElement("button"); b.className = "btn btn-outline btn-sm btn-full"; b.style.marginBottom = "4px"; b.textContent = r[0]; b.addEventListener("click", r[1]); out.appendChild(b); }); });
+    if(!out.children.length) out.innerHTML = '<div class="empty-state">ماكاين حتى نتيجة</div>';
+  });
+  setTimeout(() => input.focus(), 100);
+}
+function openQuickActions(){
+  const acts = [
+    ["📋 طلبية جديدة", () => { closeModal(); showView("orders"); openOrderModal(null); }],
+    ["👤 زبون جديد", () => goTo("clients", () => { clearClientForm(); populateClientSectorSelect(); document.getElementById("clientForm").classList.add("open"); })],
+    ["📦 سلعة جديدة", () => goTo("products", () => { editingProductId = null; populateProductSupplierSelect(); clearProductForm(); document.getElementById("productForm").classList.add("open"); })],
+    ["🛒 شراء جديد", () => { closeModal(); showView("suppliers"); openPurchaseModal({}); }],
+    ["💸 مصروف جديد", () => goTo("expenses", () => { document.getElementById("eDate").value = todayStr(); document.getElementById("expenseForm").classList.add("open"); })],
+    ["💵 تسجيل دفعة", openPayPicker],
+    ["📍 تسجيل زيارة", () => goTo("visits", () => { if(state.clients.length){ populateVisitClientSelect(); document.getElementById("visitForm").classList.add("open"); } })],
+    ["🚚 توصيلات اليوم", () => goTo("deliveries", () => { deliveryFilter = "today"; renderDeliveries(); })]
+  ];
+  openModal(`<h3>⚡ إجراءات سريعة</h3><div id="qaGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div><button class="modal-close" id="qaClose">إغلاق</button>`);
+  const grid = document.getElementById("qaGrid");
+  acts.forEach(a => { const b = document.createElement("button"); b.className = "btn btn-outline"; b.textContent = a[0]; b.addEventListener("click", a[1]); grid.appendChild(b); });
+  document.getElementById("qaClose").addEventListener("click", closeModal);
+}
+function openPayPicker(){
+  const list = state.orders.filter(o => o.status !== "cancelled" && o.status !== "failed" && orderStats(o).remaining > 0.005);
+  if(!list.length){ closeModal(); showToast("ماكاين حتى طلبية فيها باقي"); return; }
+  openModal(`<h3>💵 اختار الطلبية</h3><div id="ppList"></div><button class="modal-close" id="ppClose">إغلاق</button>`);
+  const box = document.getElementById("ppList");
+  list.slice(-15).reverse().forEach(o => { const b = document.createElement("button"); b.className = "btn btn-outline btn-sm btn-full"; b.style.marginBottom = "4px"; b.textContent = o.number + " — " + o.clientName + " • باقي " + fmtNum(orderStats(o).remaining); b.addEventListener("click", () => openPaymentModal(o)); box.appendChild(b); });
+  document.getElementById("ppClose").addEventListener("click", closeModal);
+}
+document.getElementById("globalSearchBtn").addEventListener("click", openGlobalSearch);
+document.getElementById("quickActionsBtn").addEventListener("click", openQuickActions);
+
+// ---------- products CSV import/export ----------
+function parseCsv(text){
+  const rows = []; let row = [], cur = "", q = false;
+  text = text.replace(/^\uFEFF/, "").replace(/^sep=.*\r?\n/i, "");
+  for(let i = 0; i < text.length; i++){
+    const ch = text[i];
+    if(q){ if(ch === '"'){ if(text[i + 1] === '"'){ cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if(ch === '"') q = true;
+    else if(ch === ","){ row.push(cur); cur = ""; }
+    else if(ch === "\n"){ row.push(cur); rows.push(row); row = []; cur = ""; }
+    else if(ch !== "\r") cur += ch;
+  }
+  if(cur !== "" || row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(r => r.some(c => c.trim() !== ""));
+}
+function importProductsFromCsv(text){
+  const rows = parseCsv(text);
+  if(rows.length < 2) throw new Error("الملف خاوي");
+  const head = rows[0].map(h => h.trim().toLowerCase());
+  const col = n => head.indexOf(n);
+  if(col("name") === -1) throw new Error("خاص يكون عمود Name");
+  let added = 0, updated = 0;
+  rows.slice(1).forEach(r => {
+    const g = n => (col(n) === -1 ? "" : (r[col(n)] || "").trim());
+    const name = g("name"); if(!name) return;
+    const barcode = g("barcode");
+    let p = (barcode && state.products.find(x => x.barcode === barcode)) || state.products.find(x => x.name.toLowerCase() === name.toLowerCase());
+    const vals = { brand: g("brand"), sector: g("category"), buyPrice: parseFloat(g("buy price")) || 0, sellPrice: parseFloat(g("sell price")) || 0, minStock: parseFloat(g("min stock")) || 0 };
+    const qty = parseFloat(g("stock"));
+    if(p){ Object.assign(p, vals); if(!isNaN(qty) && qty !== p.qty){ logMove(p.id, fmtNum(qty - p.qty), "adjustment", "استيراد CSV", p.name); p.qty = fmtNum(qty); } updated++; }
+    else { p = Object.assign({ id: state.nextId.product++, name, barcode, image: "", lots: [], qty: isNaN(qty) ? 0 : fmtNum(qty), active: true, unit: "قطعة" }, vals); state.products.push(p); if(p.qty > 0) logMove(p.id, p.qty, "opening", "استيراد CSV", name); added++; }
+  });
+  return { added, updated };
+}
+document.getElementById("exportProductsBtn").addEventListener("click", () => document.getElementById("exportStockCsv").click());
+document.getElementById("importProductsBtn").addEventListener("click", () => document.getElementById("importProductsFile").click());
+document.getElementById("importProductsFile").addEventListener("change", (e) => {
+  const f = e.target.files[0]; if(!f) return;
+  const rd = new FileReader();
+  rd.onload = async (ev) => {
+    const snapshot = JSON.stringify(state.products) + "|" + state.stockMovements.length + "|" + state.nextId.product + "|" + state.nextId.move;
+    const prods = state.products.map(p => Object.assign({}, p)), pLen = state.products.length, mLen = state.stockMovements.length, nid = Object.assign({}, state.nextId);
+    try{
+      const r = importProductsFromCsv(ev.target.result);
+      const ok = await saveState();
+      if(!ok){ state.products = prods; state.stockMovements.length = mLen; state.nextId = nid; showStorageFullModal(); return; }
+      renderProducts(); showToast("استيراد: " + r.added + " جديدة، " + r.updated + " تعدلات");
+    }catch(err){ state.products = prods; state.stockMovements.length = mLen; state.nextId = nid; showToast(err.message || "الملف ماشي صالح"); }
+    e.target.value = "";
+  };
+  rd.readAsText(f);
+});
+document.getElementById("productStockFilter").addEventListener("change", renderProducts);
+
+// ---------- backup: validate + safe restore ----------
+function validateBackup(b){
+  if(!b || typeof b !== "object" || Array.isArray(b)) return "الملف ماشي نسخة احتياطية";
+  if(!Array.isArray(b.products)) return "ماكاينش لائحة السلع";
+  const arrays = ["clients", "suppliers", "invoices", "orders", "expenses", "visits", "purchases", "stockMovements"];
+  for(const k of arrays){ if(b[k] !== undefined && !Array.isArray(b[k])) return "حقل غالط: " + k; }
+  if(b.products.some(p => !p || typeof p.name !== "string" || !isFinite(Number(p.qty)))) return "فلائحة السلع سلعة تالفة";
+  if((b.invoices || []).some(i => !i || !Array.isArray(i.items) || !isFinite(Number(i.total)))) return "فلائحة الفواتير فاتورة تالفة";
+  if((b.clients || []).some(c => !c || typeof c.name !== "string")) return "فلائحة الزبناء زبون تالف";
+  return "";
+}
+function applyImportedState(parsed){
+  const base = { products: [], clients: [], suppliers: [], invoices: [], orders: [], expenses: [], visits: [], purchases: [], stockMovements: [], capitalMoves: [], expenseCats: [], sectors: ["تطوان", "مرتيل"],
+    weeklyPlan: {0:"",1:"",2:"",3:"",4:"",5:"",6:""}, nextId: { product: 1, client: 1, supplier: 1, invoice: 1, order: 1, expense: 1, visit: 1, payment: 1, purchase: 1, move: 1, capital: 1 } };
+  state = Object.assign(base, parsed);
+  state.nextId = Object.assign({}, base.nextId, parsed.nextId || {});
+  migrateOrders();
+  return state;
+}
+const importInput = document.getElementById("importFileInput");
+const importClone = importInput.cloneNode(true);
+importInput.parentNode.replaceChild(importClone, importInput);
+document.getElementById("importFileInput").addEventListener("change", (e) => {
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    let parsed;
+    try{ parsed = JSON.parse(ev.target.result); }catch(err){ showToast("ماقدرتش نقرا الملف"); e.target.value = ""; return; }
+    const bad = validateBackup(parsed);
+    if(bad){ showToast("النسخة ماشي صالحة: " + bad); e.target.value = ""; return; }
+    if(!confirm("غادي تتبدل البيانات الحالية بالنسخة (" + parsed.products.length + " سلعة، " + (parsed.invoices || []).length + " فاتورة، " + (parsed.clients || []).length + " زبون). قبل هادشي كنحمل ليك نسخة من البيانات الحالية. نكمل؟")){ e.target.value = ""; return; }
+    exportBackup();
+    const prev = state;
+    applyImportedState(parsed);
+    const ok = await saveState();
+    if(!ok){ state = prev; showStorageFullModal(); e.target.value = ""; return; }
+    renderDashboard(); renderProducts(); renderClients(); renderSuppliers(); renderInvoices(); renderOrders(); renderDeliveries();
+    showToast("تم استرجاع البيانات");
+    e.target.value = "";
+  };
+  reader.readAsText(file);
+});
 
 // ---------- THEME / LANGUAGE / PIN ----------
 const LANG_KEY = "kontajiran-lang", THEME_KEY = "kontajiran-theme";
@@ -3714,6 +4798,31 @@ const I18N_EXACT = [
 ["ماقدرش يلقى الموقع. فعّل Location/GPS من الإعدادات السريعة، وخرج لمكان مفتوح شوية.","Position introuvable. Activez la localisation/GPS et sortez à l'extérieur.","No se encuentra la ubicación. Activa la localización/GPS y sal al exterior."],
 ["داز الوقت بلا ما يلقى الموقع. جرب فمكان مفتوح وعاود.","Délai dépassé. Essayez en extérieur puis réessayez.","Tiempo agotado. Prueba al aire libre y reintenta."],
 ["الإذن ديال الموقع مرفوض. من إعدادات الهاتف ← التطبيقات ← Kontajiran ← الأذونات ← الموقع ← السماح. وإلا كان APK وباقي ماخدمش، خاص يتصنع من جديد بخيار Location delegation فـ PWABuilder.","Autorisation refusée. Paramètres ← Applications ← Kontajiran ← Autorisations ← Position ← Autoriser. Si l'APK ne fonctionne toujours pas, régénérez-le avec « Location delegation » dans PWABuilder.","Permiso denegado. Ajustes ← Aplicaciones ← Kontajiran ← Permisos ← Ubicación ← Permitir. Si el APK sigue sin funcionar, vuelve a generarlo con «Location delegation» en PWABuilder."]
+,
+["توصيل","Livraison","Entrega"],["تقرير","Rapport","Informe"],
+["طلبية جديدة","Nouvelle commande","Nuevo pedido"],["بحث: رقم الطلبية، زبون، سلعة...","Recherche : n° commande, client, produit...","Buscar: n.º pedido, cliente, producto..."],
+["جارية","En cours","En curso"],["تنتظر التأكيد","En attente de confirmation","Pendiente de confirmación"],["تنتظر التموين","En attente d'approvisionnement","Esperando suministro"],
+["تشرات","Acheté","Comprado"],["قيد التحضير","En préparation","En preparación"],["جاهزة للتوصيل","Prête à livrer","Lista para entregar"],["خرجات للتوصيل","En cours de livraison","En reparto"],
+["تسلّمات بنجاح","Livrée avec succès","Entregada con éxito"],["فشل التوصيل","Échec de livraison","Entrega fallida"],
+["تعديل","Modifier","Editar"],["دفعة","Paiement","Pago"],["شراء/تموين","Achat / appro","Compra / suministro"],["تسليم","Livrer","Entregar"],["فشل","Échec","Fallo"],["إلغاء","Annuler","Cancelar"],
+["طلبية","Commande","Pedido"],["وصل تسليم","Bon de livraison","Albarán de entrega"],["نسخ","Dupliquer","Duplicar"],["الفاتورة","Facture","Factura"],
+["ربح متوقع (طلبيات جارية) — مماشي فعلي","Bénéfice prévu (commandes en cours) — pas réel","Beneficio previsto (pedidos en curso) — no real"],
+["الفلوس المقبوضة اليوم","Encaissements du jour","Cobros de hoy"],["طلبيات جارية","Commandes en cours","Pedidos en curso"],
+["توصيلات ناجحة (هاد الشهر)","Livraisons réussies (ce mois)","Entregas exitosas (este mes)"],["سلع نافدة","Produits épuisés","Productos agotados"],
+["ربح فعلي اليوم","Bénéfice réel du jour","Beneficio real de hoy"],["أحسن الزبناء (هاد الشهر)","Meilleurs clients (ce mois)","Mejores clientes (este mes)"],
+["ملخص الفترة:","Résumé de la période :","Resumen del periodo:"],["غيّر","Changer","Cambiar"],
+["المبيعات الفعلية","Ventes réelles","Ventas reales"],["الربح الفعلي","Bénéfice réel","Beneficio real"],["الربح الصافي الفعلي","Bénéfice net réel","Beneficio neto real"],
+["الفلوس المقبوضة","Encaissements","Cobros"],["ربح متوقع (جارية)","Bénéfice prévu (en cours)","Beneficio previsto (en curso)"],["توصيلات ناجحة","Livraisons réussies","Entregas exitosas"],["فاشلة / ملغية","Échouées / annulées","Fallidas / canceladas"],
+["مرجع / SKU","Référence / SKU","Referencia / SKU"],["الوحدة","Unité","Unidad"],["الوصف (اختياري)","Description (facultatif)","Descripción (opcional)"],["نشيطة","Active","Activo"],["غير نشيطة (مؤرشفة)","Inactive (archivé)","Inactivo (archivado)"],
+["كل السلع","Tous les produits","Todos los productos"],["متوفرة","Disponible","Disponible"],["نافدة","Épuisé","Agotado"],["ستوك قليل","Stock faible","Stock bajo"],["غير نشيطة","Inactif","Inactivo"],
+["تصدير السلع (CSV)","Exporter les produits (CSV)","Exportar productos (CSV)"],["استيراد سلع (CSV)","Importer des produits (CSV)","Importar productos (CSV)"],
+["الحي","Quartier","Barrio"],["صنف الزبون","Catégorie client","Categoría de cliente"],["الملف","Profil","Perfil"],["خدا طلبية","A passé commande","Hizo pedido"],
+["فاتورة شراء جديدة","Nouvelle facture d'achat","Nueva factura de compra"],["فواتير الشراء","Factures d'achat","Facturas de compra"],["فاتورة شراء","Facture d'achat","Factura de compra"],["دين يدوي","Dette manuelle","Deuda manual"],
+["الفترة الحالية","Période actuelle","Periodo actual"],["إضافة رأس مال","Ajouter du capital","Añadir capital"],["سحب صاحب المحل","Retrait du propriétaire","Retiro del propietario"],["نوع","Type","Tipo"],
+["بحث شامل","Recherche globale","Búsqueda global"],["إجراءات سريعة","Actions rapides","Acciones rápidas"],["أداء التوصيل","Performance de livraison","Rendimiento de entregas"],
+["حركات الستوك (آخر 40)","Mouvements de stock (40 derniers)","Movimientos de stock (últimos 40)"],["قيمة الستوك","Valeur du stock","Valor del stock"],
+["طلبية جديدة","Nouvelle commande","Nuevo pedido"],["اليوم (والمتأخر)","Aujourd'hui (et en retard)","Hoy (y atrasadas)"],["غدا","Demain","Mañana"],["كلشي","Tout","Todo"],
+["الدفعات","Paiements","Pagos"],["السجل","Historique","Historial"],["المجموع","Total","Total"],["مدفوع","Payé","Pagado"],["باقي","Reste","Resto"]
 ];
 const I18N_PARTIAL = [
 ["د.م","DH","DH"],["ستوك:","Stock :","Stock:"],["جملة:","Achat :","Compra:"],["بيع:","Vente :","Venta:"],["هامش:","Marge :","Margen:"],["عرض:","Promo :","Promo:"],
