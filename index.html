@@ -2637,13 +2637,18 @@ document.getElementById("invoiceSearch").addEventListener("input", renderInvoice
 // ---------- CATALOGUE ----------
 let activeCatalogSectors = new Set(); // several categories can be selected at once
 let activeCatalogBrands = new Set();
-let catalogOwnerMode = false; // false = customer view (only in-stock), true = owner view (all)
+let catalogOwnerMode = false; // false = customer view (everything not hidden), true = owner view (only what is in stock)
+let ownerShowOut = false;     // owner view: also list out-of-stock products
 // out-of-stock products stay in the catalog (sellable on order). The owner can
 // still hide a specific product from the customer view with hideWhenOut.
+// Customer view: everything except products the owner hid by hand.
+// Owner view: only products in stock — plus out-of-stock products of a category/brand
+// the owner explicitly selected (to take an order for it), or all of them with "+ النافدة".
 function catalogVisible(p){
   if(p.active === false) return false;
-  if(catalogOwnerMode) return true;
-  return p.hidden !== true; // the owner decides per product, whatever the stock is
+  if(!catalogOwnerMode) return p.hidden !== true;
+  if(p.qty > 0) return true;
+  return ownerShowOut || activeCatalogSectors.has(p.sector || "") || activeCatalogBrands.has(p.brand || "");
 }
 function matchesCatalogSelection(p){
   return (activeCatalogSectors.size === 0 || activeCatalogSectors.has(p.sector || "")) &&
@@ -2665,14 +2670,20 @@ function catalogShareItems(){
 function renderCatalog(){
   const modeBar = document.getElementById("catalogModeBar");
   modeBar.innerHTML = catalogOwnerMode
-    ? `<button class="btn btn-gold btn-full" id="catalogModeBtn">🔓 وضع صاحب المحل: كلشي ظاهر، وكل سلعة عندها زر إظهار/إخفاء (نقر لوضع الزبون)</button>`
-    : `<button class="btn btn-outline btn-full" id="catalogModeBtn">👁️ وضع الزبون: كتبان غير اللي ما خبيتيش (نقر لوضع صاحب المحل)</button>`;
+    ? `<button class="btn btn-gold btn-full" id="catalogModeBtn">🔓 وضع صاحب المحل: غير السلع اللي فالستوك (نقر لوضع الزبون)</button>
+       <button class="btn ${ownerShowOut ? "btn-gold" : "btn-outline"} btn-full" id="catalogShowOutBtn" style="margin-top:6px;">${ownerShowOut ? "✅ كنبين حتى السلع النافدة" : "＋ بين حتى السلع النافدة"}</button>
+       <div style="font-size:11px;color:var(--muted);margin-top:4px;">باش تخدم بسلعة نافدة مع زبون: اختار التصنيف ولا الماركة ديالها تحت، وغتبان.</div>`
+    : `<button class="btn btn-outline btn-full" id="catalogModeBtn">👁️ وضع الزبون: كتبان كلشي (حتى النافدة) ماعدا اللي خبيتي (نقر لوضع صاحب المحل)</button>`;
   document.getElementById("catalogModeBtn").addEventListener("click", () => {
     catalogOwnerMode = !catalogOwnerMode;
     renderCatalog();
   });
+  const showOutBtn = document.getElementById("catalogShowOutBtn");
+  if(showOutBtn) showOutBtn.addEventListener("click", () => { ownerShowOut = !ownerShowOut; renderCatalog(); });
   const visibleProducts = state.products.filter(catalogVisible);
-  const productSectors = [...new Set(visibleProducts.map(p => p.sector).filter(Boolean))];
+  // chips list every category/brand the owner can pick, even ones with nothing in stock
+  const chipSource = catalogOwnerMode ? state.products.filter(p => p.active !== false) : visibleProducts;
+  const productSectors = [...new Set(chipSource.map(p => p.sector).filter(Boolean))];
   activeCatalogSectors.forEach(x => { if(productSectors.indexOf(x) === -1) activeCatalogSectors.delete(x); });
   const rowEl = document.getElementById("catalogSectorRow");
   const chips = ['<span class="chip all ' + (activeCatalogSectors.size === 0 ? "active" : "") + '" data-cf="">كولشي</span>']
@@ -2689,7 +2700,7 @@ function renderCatalog(){
   });
 
   const brandRowEl = document.getElementById("catalogBrandRow");
-  const sectorScoped = activeCatalogSectors.size ? visibleProducts.filter(p => activeCatalogSectors.has(p.sector || "")) : visibleProducts;
+  const sectorScoped = activeCatalogSectors.size ? chipSource.filter(p => activeCatalogSectors.has(p.sector || "")) : chipSource;
   const productBrands = [...new Set(sectorScoped.map(p => p.brand).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
   activeCatalogBrands.forEach(x => { if(productBrands.indexOf(x) === -1) activeCatalogBrands.delete(x); });
   if(productBrands.length){
