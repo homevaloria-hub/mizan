@@ -2635,68 +2635,83 @@ function renderInvoices(){
 document.getElementById("invoiceSearch").addEventListener("input", renderInvoices);
 
 // ---------- CATALOGUE ----------
-let activeCatalogSector = "";
-let activeCatalogBrand = "";
+let activeCatalogSectors = new Set(); // several categories can be selected at once
+let activeCatalogBrands = new Set();
 let catalogOwnerMode = false; // false = customer view (only in-stock), true = owner view (all)
 // out-of-stock products stay in the catalog (sellable on order). The owner can
 // still hide a specific product from the customer view with hideWhenOut.
 function catalogVisible(p){
   if(p.active === false) return false;
   if(catalogOwnerMode) return true;
-  return !(p.hideWhenOut === true && p.qty <= 0);
+  return p.hidden !== true; // the owner decides per product, whatever the stock is
 }
-function renderCatalog(){
-  const modeBar = document.getElementById("catalogModeBar");
-  modeBar.innerHTML = catalogOwnerMode
-    ? `<button class="btn btn-gold btn-full" id="catalogModeBtn">🔓 وضع صاحب المحل: كلشي ظاهر (نقر باش تدخل لوضع الزبون)</button>`
-    : `<button class="btn btn-outline btn-full" id="catalogModeBtn">👁️ وضع الزبون: السلع النافدة كتبان "تحت الطلب" (نقر لوضع صاحب المحل)</button>`;
-  document.getElementById("catalogModeBtn").addEventListener("click", () => {
-    catalogOwnerMode = !catalogOwnerMode;
-    renderCatalog();
-  });
-  const visibleProducts = state.products.filter(catalogVisible);
-  const productSectors = [...new Set(visibleProducts.map(p => p.sector).filter(Boolean))];
-  const rowEl = document.getElementById("catalogSectorRow");
-  const chips = ['<span class="chip all ' + (activeCatalogSector==="" ? "active" : "") + '" data-cf="">كولشي</span>']
-    .concat(productSectors.map(s => `<span class="chip ${activeCatalogSector===s ? "active" : ""}" data-cf="${escapeHtml(s)}">${escapeHtml(s)}</span>`));
-  rowEl.innerHTML = productSectors.length ? chips.join("") : "";
-  rowEl.querySelectorAll(".chip").forEach(ch => {
-    ch.addEventListener("click", () => {
-      activeCatalogSector = ch.dataset.cf;
-      renderCatalog();
-    });
-  });
-
-  const brandRowEl = document.getElementById("catalogBrandRow");
-  const sectorScoped = activeCatalogSector ? visibleProducts.filter(p => p.sector === activeCatalogSector) : visibleProducts;
-  const productBrands = [...new Set(sectorScoped.map(p => p.brand).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-  if(productBrands.length){
-    const brandChips = ['<span class="chip all ' + (activeCatalogBrand==="" ? "active" : "") + '" data-bf="">كل الماركات</span>']
-      .concat(productBrands.map(b => `<span class="chip ${activeCatalogBrand===b ? "active" : ""}" data-bf="${escapeHtml(b)}">🏷️ ${escapeHtml(b)}</span>`));
-    brandRowEl.innerHTML = brandChips.join("");
-    brandRowEl.querySelectorAll(".chip").forEach(ch => {
-      ch.addEventListener("click", () => {
-        activeCatalogBrand = ch.dataset.bf;
-        renderCatalog();
-      });
-    });
-  } else {
-    brandRowEl.innerHTML = "";
-    activeCatalogBrand = "";
-  }
-
-  const grid = document.getElementById("catalogGrid");
-  let filtered = activeCatalogSector ? visibleProducts.filter(p => p.sector === activeCatalogSector) : visibleProducts.slice();
-  if(activeCatalogBrand) filtered = filtered.filter(p => p.brand === activeCatalogBrand);
-  // group same-brand products together, professionally: sort by brand then name
-  // (products with no brand keep their natural order, pushed after branded ones)
-  filtered = filtered.slice().sort((a,b) => {
+function matchesCatalogSelection(p){
+  return (activeCatalogSectors.size === 0 || activeCatalogSectors.has(p.sector || "")) &&
+         (activeCatalogBrands.size === 0 || activeCatalogBrands.has(p.brand || ""));
+}
+function sortCatalogItems(list){
+  return list.slice().sort((a,b) => {
     const ba = (a.brand||"").toLowerCase(), bb = (b.brand||"").toLowerCase();
     if(ba && !bb) return -1;
     if(!ba && bb) return 1;
     if(ba !== bb) return ba.localeCompare(bb);
     return a.name.localeCompare(b.name);
   });
+}
+// what a customer is allowed to see/receive: active, not hidden, within the selected categories/brands
+function catalogShareItems(){
+  return sortCatalogItems(state.products.filter(p => p.active !== false && p.hidden !== true && matchesCatalogSelection(p)));
+}
+function renderCatalog(){
+  const modeBar = document.getElementById("catalogModeBar");
+  modeBar.innerHTML = catalogOwnerMode
+    ? `<button class="btn btn-gold btn-full" id="catalogModeBtn">🔓 وضع صاحب المحل: كلشي ظاهر، وكل سلعة عندها زر إظهار/إخفاء (نقر لوضع الزبون)</button>`
+    : `<button class="btn btn-outline btn-full" id="catalogModeBtn">👁️ وضع الزبون: كتبان غير اللي ما خبيتيش (نقر لوضع صاحب المحل)</button>`;
+  document.getElementById("catalogModeBtn").addEventListener("click", () => {
+    catalogOwnerMode = !catalogOwnerMode;
+    renderCatalog();
+  });
+  const visibleProducts = state.products.filter(catalogVisible);
+  const productSectors = [...new Set(visibleProducts.map(p => p.sector).filter(Boolean))];
+  activeCatalogSectors.forEach(x => { if(productSectors.indexOf(x) === -1) activeCatalogSectors.delete(x); });
+  const rowEl = document.getElementById("catalogSectorRow");
+  const chips = ['<span class="chip all ' + (activeCatalogSectors.size === 0 ? "active" : "") + '" data-cf="">كولشي</span>']
+    .concat(productSectors.map(s => `<span class="chip ${activeCatalogSectors.has(s) ? "active" : ""}" data-cf="${escapeHtml(s)}">${escapeHtml(s)}</span>`));
+  rowEl.innerHTML = productSectors.length ? chips.join("") : "";
+  rowEl.querySelectorAll(".chip").forEach(ch => {
+    ch.addEventListener("click", () => {
+      const v = ch.dataset.cf;
+      if(v === "") activeCatalogSectors.clear();
+      else if(activeCatalogSectors.has(v)) activeCatalogSectors.delete(v);
+      else activeCatalogSectors.add(v);
+      renderCatalog();
+    });
+  });
+
+  const brandRowEl = document.getElementById("catalogBrandRow");
+  const sectorScoped = activeCatalogSectors.size ? visibleProducts.filter(p => activeCatalogSectors.has(p.sector || "")) : visibleProducts;
+  const productBrands = [...new Set(sectorScoped.map(p => p.brand).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  activeCatalogBrands.forEach(x => { if(productBrands.indexOf(x) === -1) activeCatalogBrands.delete(x); });
+  if(productBrands.length){
+    const brandChips = ['<span class="chip all ' + (activeCatalogBrands.size === 0 ? "active" : "") + '" data-bf="">كل الماركات</span>']
+      .concat(productBrands.map(b => `<span class="chip ${activeCatalogBrands.has(b) ? "active" : ""}" data-bf="${escapeHtml(b)}">🏷️ ${escapeHtml(b)}</span>`));
+    brandRowEl.innerHTML = brandChips.join("");
+    brandRowEl.querySelectorAll(".chip").forEach(ch => {
+      ch.addEventListener("click", () => {
+        const v = ch.dataset.bf;
+        if(v === "") activeCatalogBrands.clear();
+        else if(activeCatalogBrands.has(v)) activeCatalogBrands.delete(v);
+        else activeCatalogBrands.add(v);
+        renderCatalog();
+      });
+    });
+  } else {
+    brandRowEl.innerHTML = "";
+    activeCatalogBrands.clear();
+  }
+
+  const grid = document.getElementById("catalogGrid");
+  const filtered = sortCatalogItems(visibleProducts.filter(matchesCatalogSelection));
   if(filtered.length === 0){
     grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">زيد سلع وصور ليهم من صفحة "السلعة" باش يبانو هنا</div>';
     return;
@@ -2722,7 +2737,7 @@ function renderCatalog(){
         <div class="catalog-calc-total" id="cat-total-${p.id}">= ${fmt(p.promoPrice || p.sellPrice)}</div>
         <button class="btn btn-gold catalog-add-btn cat-add-sale" data-id="${p.id}" ${availableQty(p)<=0 ? "disabled style='opacity:0.5;'" : ""}>زيد للبيع</button>
         ${availableQty(p)<=0 ? `<button class="btn btn-primary catalog-add-btn cat-order" data-id="${p.id}" style="margin-top:6px;">📋 دير طلبية (تحت الطلب)</button>` : `<button class="btn btn-outline catalog-add-btn cat-order" data-id="${p.id}" style="margin-top:6px;">📋 طلبية</button>`}
-        ${(catalogOwnerMode && p.qty<=0) ? `<button class="btn btn-outline catalog-add-btn cat-toggle-show" data-id="${p.id}" style="margin-top:6px;">${p.hideWhenOut ? '👁️ أظهرها للزبون' : '🙈 خبيها على الزبون حتى تتوفر'}</button>` : ""}
+        ${catalogOwnerMode ? `<button class="btn ${p.hidden ? "btn-gold" : "btn-outline"} catalog-add-btn cat-toggle-show" data-id="${p.id}" style="margin-top:6px;">${p.hidden ? '👁️ أظهرها للزبون (دابا مخبية)' : '🙈 خبيها على الزبون'}</button>` : ""}
       </div>
     </div>
   `).join("");
@@ -2779,10 +2794,12 @@ function renderCatalog(){
     btn.addEventListener("click", async () => {
       const product = state.products.find(x => x.id === parseInt(btn.dataset.id));
       if(!product) return;
-      product.hideWhenOut = !product.hideWhenOut;
-      await saveState();
+      product.hidden = !product.hidden;
+      delete product.hideWhenOut;
+      const ok = await saveState();
+      if(!ok){ product.hidden = !product.hidden; showStorageFullModal(); return; }
       renderCatalog();
-      showToast(product.hideWhenOut ? "غتبقى مخبية على الزبون حتى تتوفر" : "غتبان للزبون (تحت الطلب) حتى وهي نافدة");
+      showToast(product.hidden ? "غتبقى مخبية على الزبون" : "غتبان للزبون");
     });
   });
   grid.querySelectorAll(".cat-order").forEach(btn => {
@@ -2797,9 +2814,8 @@ function renderCatalog(){
 
 // ---------- SHARE CATALOG VIA WHATSAPP ----------
 document.getElementById("shareCatalogBtn").addEventListener("click", () => {
-  const items = state.products.filter(p => p.active !== false && !(p.hideWhenOut && p.qty <= 0))
-    .sort((a,b) => ((a.brand||"~").toLowerCase()).localeCompare((b.brand||"~").toLowerCase()) || a.name.localeCompare(b.name));
-  if(items.length === 0){ showToast("ماكاين حتى سلعة باش تتصيفط"); return; }
+  const items = catalogShareItems();
+  if(items.length === 0){ showToast("ماكاين حتى سلعة باش تتصيفط (شوف التصنيفات المختارة والسلع المخبية)"); return; }
   const lines = ["🛍️ *Kontajiran Store*", "📅 " + todayStr(), ""];
   let lastBrand = null;
   items.forEach(p => {
@@ -2815,6 +2831,7 @@ document.getElementById("shareCatalogBtn").addEventListener("click", () => {
     showToast("الكاطالوغ كبير: تنسخ، لصقو فواتساب");
     return;
   }
+  showToast("كنصيفط " + items.length + " سلعة");
   window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank");
 });
 
@@ -3606,6 +3623,8 @@ function logMove(productId, qty, type, ref, note){
   state.stockMovements.push({ id: state.nextId.move++, date: new Date().toISOString(), productId, productName: p ? p.name : "", qty: fmtNum(qty), type, ref: ref || "", note: note || "" });
 }
 function migrateOrders(){
+  // old "hide while out of stock" flag becomes the simple per-product hidden flag
+  state.products.forEach(p => { if(p.hideWhenOut){ p.hidden = true; delete p.hideWhenOut; } });
   state.orders.forEach(o => {
     if(Array.isArray(o.items)){ o.payments = o.payments || []; o.history = o.history || []; o.discount = o.discount || 0; return; }
     const st = o.status === "pending" ? "new" : (o.status === "done" ? "delivered" : (ORDER_STATUS[o.status] ? o.status : "new"));
